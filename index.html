@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Analysis dashboard</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script
+      type="module"
+      src="https://cdn.jsdelivr.net/npm/zero-md@3?register"
+    ></script>
+    <link rel="stylesheet" href="./app-theme.css" />
+  </head>
+
+  <body>
+    <header>Analysis dashboard</header>
+
+    <nav aria-label="Analysis sections">
+      <button
+        id="unit-testing"
+        class="active"
+        aria-label="View Unit Testing analysis"
+        aria-pressed="true"
+        role="tab"
+      >
+        Unit Testing
+      </button>
+      <button
+        id="security-posture"
+        aria-label="View Security Posture analysis"
+        aria-pressed="false"
+        role="tab"
+      >
+        Security Posture
+      </button>
+      <button
+        id="regression-risk"
+        aria-label="View Regression Risk analysis"
+        aria-pressed="false"
+        role="tab"
+      >
+        Regression Risk
+      </button>
+      <button
+        id="semantic-bug-detection"
+        aria-label="View Semantic Bug Detection analysis"
+        aria-pressed="false"
+        role="tab"
+      >
+        Semantic Bug Detection
+      </button>
+    </nav>
+
+    <main
+      style="
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+      "
+    >
+      <div
+        id="summary-md-container"
+        style="
+          width: 80%;
+          max-height: 420px;
+          overflow-y: auto;
+          margin-bottom: 1.5rem;
+          position: relative;
+          z-index: 10;
+          background: #1f2937;
+        "
+      >
+        <zero-md id="summary-md" style="display: block" src="">
+          <template>
+            <link rel="stylesheet" href="./app-theme.css" />
+          </template>
+        </zero-md>
+      </div>
+
+      <div
+        class="chart-container"
+        id="chart-container"
+        role="region"
+        aria-label="Data visualization area"
+        style="
+          width: 80%;
+          min-height: 420px;
+          max-height: 600px;
+          overflow-y: auto;
+          margin-bottom: 2rem;
+          background: #111827;
+          position: relative;
+          z-index: 5;
+        "
+      >
+        <!-- Eliminado div extra -->
+        <div class="chart-toolbar">
+          <div
+            id="file-upload-area"
+            style="
+              display: flex;
+              align-items: center;
+              gap: 1.2rem;
+              min-height: 36px;
+              margin-bottom: 1.2rem;
+              background: none;
+              box-shadow: none;
+              position: static;
+              padding: 0;
+              width: 100%;
+            "
+          >
+            <div
+              class="file-upload-group"
+              id="unit-testing-upload"
+              style="display: none; align-items: center; gap: 0.3rem"
+            >
+              <label
+                for="unit-testing-file"
+                style="
+                  font-size: 0.98rem;
+                  color: #60a5fa;
+                  font-weight: 500;
+                  margin-bottom: 0;
+                "
+                >CSV Unit Testing:</label
+              >
+              <input
+                type="file"
+                id="unit-testing-file"
+                accept=".csv"
+                aria-label="Upload CSV for Unit Testing"
+                style="
+                  color: #e5e7eb;
+                  background: #111827;
+                  border: 1px solid #374151;
+                  border-radius: 0.3rem;
+                  padding: 0.18rem 0.5rem;
+                  min-width: 120px;
+                  font-size: 0.97rem;
+                "
+              />
+              <button
+                id="unit-testing-advanced-btn"
+                class="advanced-btn"
+                aria-label="Show advanced chart options for Unit Testing"
+                tabindex="0"
+                style="
+                  margin-left: 1rem;
+                  background: #222;
+                  color: #60a5fa;
+                  border: 1px solid #374151;
+                  border-radius: 0.3rem;
+                  padding: 0.3rem 0.9rem;
+                  cursor: pointer;
+                "
+              >
+                Advanced options
+              </button>
+              <select
+                id="unit-testing-chart-type"
+                aria-label="Chart type for Unit Testing"
+                style="
+                  display: none;
+                  padding: 0.3rem 0.7rem;
+                  border-radius: 0.3rem;
+                  background: #1f2937;
+                  color: #e5e7eb;
+                  border: 1px solid #374151;
+                  min-width: 200px;
+                  margin-left: 1rem;
+                "
+              ></select>
+            </div>
+            <div
+              class="file-upload-group"
+              id="security-posture-upload"
+              style="display: none; align-items: center; gap: 0.3rem"
+            >
+              <label
+                for="security-posture-file"
+                style="
+                  font-size: 0.98rem;
+                  color: #60a5fa;
+                  font-weight: 500;
+                  margin-bottom: 0;
+                "
+                >CSV Security Posture:</label
+              >
+              <input
+                type="file"
+                id="security-posture-file"
+                accept=".csv"
+                aria-label="Upload CSV for Security Posture"
+                style="
+                  color: #e5e7eb;
+                  background: #111827;
+                  border: 1px solid #374151;
+                  border-radius: 0.3rem;
+                  padding: 0.18rem 0.5rem;
+                  min-width: 120px;
+                  font-size: 0.97rem;
+                "
+              />
+              <button
+                id="security-posture-advanced-btn"
+                class="advanced-btn"
+                aria-label="Show advanced chart options for Security Posture"
+                tabindex="0"
+                style="
+                  margin-left: 1rem;
+                  background: #222;
+                  color: #60a5fa;
+                  border: 1px solid #374151;
+                  border-radius: 0.3rem;
+                  padding: 0.3rem 0.9rem;
+                  cursor: pointer;
+                "
+              >
+                Advanced options
+              </button>
+              <select
+                id="security-posture-chart-type"
+                aria-label="Chart type for Security Posture"
+                style="
+                  display: none;
+                  padding: 0.3rem 0.7rem;
+                  border-radius: 0.3rem;
+                  background: #1f2937;
+                  color: #e5e7eb;
+                  border: 1px solid #374151;
+                  min-width: 200px;
+                  margin-left: 1rem;
+                "
+              ></select>
+            </div>
+            <div
+              class="file-upload-group"
+              id="regression-risk-upload"
+              style="display: none; align-items: center; gap: 0.3rem"
+            >
+              <label
+                for="regression-risk-file"
+                style="
+                  font-size: 0.98rem;
+                  color: #60a5fa;
+                  font-weight: 500;
+                  margin-bottom: 0;
+                "
+                >CSV Regression Risk:</label
+              >
+              <input
+                type="file"
+                id="regression-risk-file"
+                accept=".csv"
+                aria-label="Upload CSV for Regression Risk"
+                style="
+                  color: #e5e7eb;
+                  background: #111827;
+                  border: 1px solid #374151;
+                  border-radius: 0.3rem;
+                  padding: 0.18rem 0.5rem;
+                  min-width: 120px;
+                  font-size: 0.97rem;
+                "
+              />
+              <button
+                id="regression-risk-advanced-btn"
+                class="advanced-btn"
+                aria-label="Show advanced chart options for Regression Risk"
+                tabindex="0"
+                style="
+                  margin-left: 1rem;
+                  background: #222;
+                  color: #60a5fa;
+                  border: 1px solid #374151;
+                  border-radius: 0.3rem;
+                  padding: 0.3rem 0.9rem;
+                  cursor: pointer;
+                "
+              >
+                Advanced options
+              </button>
+              <select
+                id="regression-risk-chart-type"
+                aria-label="Chart type for Regression Risk"
+                style="
+                  display: none;
+                  padding: 0.3rem 0.7rem;
+                  border-radius: 0.3rem;
+                  background: #1f2937;
+                  color: #e5e7eb;
+                  border: 1px solid #374151;
+                  min-width: 200px;
+                  margin-left: 1rem;
+                "
+              ></select>
+            </div>
+            <div
+              class="file-upload-group"
+              id="semantic-bug-detection-upload"
+              style="display: none; align-items: center; gap: 0.3rem"
+            >
+              <label
+                for="semantic-bug-detection-file"
+                style="
+                  font-size: 0.98rem;
+                  color: #60a5fa;
+                  font-weight: 500;
+                  margin-bottom: 0;
+                "
+                >CSV Semantic Bug Detection:</label
+              >
+              <input
+                type="file"
+                id="semantic-bug-detection-file"
+                accept=".csv"
+                aria-label="Upload CSV for Semantic Bug Detection"
+                style="
+                  color: #e5e7eb;
+                  background: #111827;
+                  border: 1px solid #374151;
+                  border-radius: 0.3rem;
+                  padding: 0.18rem 0.5rem;
+                  min-width: 120px;
+                  font-size: 0.97rem;
+                "
+              />
+              <button
+                id="semantic-bug-detection-advanced-btn"
+                class="advanced-btn"
+                aria-label="Show advanced chart options for Semantic Bug Detection"
+                tabindex="0"
+                style="
+                  margin-left: 1rem;
+                  background: #222;
+                  color: #60a5fa;
+                  border: 1px solid #374151;
+                  border-radius: 0.3rem;
+                  padding: 0.3rem 0.9rem;
+                  cursor: pointer;
+                "
+              >
+                Advanced options
+              </button>
+              <select
+                id="semantic-bug-detection-chart-type"
+                aria-label="Chart type for Semantic Bug Detection"
+                style="
+                  display: none;
+                  padding: 0.3rem 0.7rem;
+                  border-radius: 0.3rem;
+                  background: #1f2937;
+                  color: #e5e7eb;
+                  border: 1px solid #374151;
+                  min-width: 200px;
+                  margin-left: 1rem;
+                "
+              ></select>
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="chart-visualization-container"
+          style="
+            width: 100%;
+            min-height: 720px;
+            background: #222;
+            border-radius: 0.7rem;
+            box-shadow: 0 2px 12px #0006;
+            padding: 1.2rem 1.5rem;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+          "
+        >
+          <svg
+            id="chart"
+            style="width: 100%; height: 100%; position: static; z-index: 1"
+            role="img"
+            aria-label="Data chart"
+          ></svg>
+        </div>
+        <div
+          class="loader"
+          id="loader"
+          aria-live="polite"
+          aria-label="Loading data"
+        ></div>
+        <div
+          id="csv-summary"
+          style="
+            display: none;
+            position: absolute;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #222;
+            color: #fff;
+            padding: 1rem 1.5rem;
+            border-radius: 0.7rem;
+            z-index: 300;
+            box-shadow: 0 2px 12px #0008;
+            font-size: 1.05rem;
+          "
+        ></div>
+        <div
+          class="error-message"
+          id="error-message"
+          aria-live="polite"
+          hidden
+        ></div>
+      </div>
+    </main>
+
+    <script type="module" src="./index.js"></script>
+    <script type="module" src="./ui.js"></script>
+  </body>
+</html>

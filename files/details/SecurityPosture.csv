@@ -1,0 +1,11 @@
+Module,Category,Subcategory,FilePath,Line,Column,Severity,Description,SuggestedFix
+orders,Authentication,Weak Password,src/app/orders/order.service.ts,40,6,High,Password policy not enforced,Implement strong password policy
+users,Authorization,Privilege Escalation,src/app/users/user.service.ts,22,3,Critical,Role checks missing,Add role-based access control
+products,Input Validation,Missing Validation,src/app/products/product.service.ts,15,2,Medium,No input validation,Add input validation
+payments,Encryption,Weak Encryption,src/app/payments/payment.service.ts,88,12,High,Outdated encryption algorithm,Update to AES-256
+inventory,Logging,Excessive Logging,src/app/inventory/inventory.service.ts,60,8,Medium,Too many logs,Reduce log verbosity
+shipping,Session Management,Session Timeout,src/app/shipping/shipping.service.ts,77,9,High,Session does not expire,Implement session timeout
+orders,Error Handling,Uncaught Exception,src/app/orders/order.api.ts,33,4,Medium,Exception not handled,Add try-catch block
+users,Configuration,Default Password,src/app/users/user.component.ts,19,2,High,Default password set,Force password change
+products,Monitoring,No Health Check,src/app/products/product.service.ts,25,7,Medium,No health check endpoint,Add health check
+payments,Encryption,No Encryption,src/app/payments/payment.service.ts,99,10,Critical,Data sent in plain text,Encrypt data in transit

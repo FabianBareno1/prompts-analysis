@@ -1,0 +1,11 @@
+Module,Category,Subcategory,FilePath,Line,Column,Severity,Description,SuggestedFix
+orders,Regression,Deprecated API,src/app/orders/order.service.ts,40,6,High,Method uses deprecated API,Refactor to use new API
+users,Performance,Slow Query,src/app/users/user.service.ts,22,3,Medium,Query is not optimized,Add index to users table
+products,Regression,Logic Error,src/app/products/product.service.ts,15,2,Low,Incorrect calculation,Fix calculation logic
+payments,Security,SQL Injection,src/app/payments/payment.service.ts,88,12,Critical,User input not sanitized,Use parameterized queries
+inventory,Performance,Memory Leak,src/app/inventory/inventory.service.ts,60,8,High,Memory not released,Fix memory management
+shipping,Security,Open Port,src/app/shipping/shipping.service.ts,77,9,Medium,Unnecessary port open,Close unused ports
+orders,Performance,Slow API,src/app/orders/order.api.ts,33,4,Medium,API response time high,Optimize API logic
+users,Regression,UI Bug,src/app/users/user.component.ts,19,2,Low,Button not clickable,Fix button event
+products,Security,Hardcoded Secret,src/app/products/product.service.ts,25,7,High,Secret key in code,Move to env variable
+payments,Performance,Timeout,src/app/payments/payment.service.ts,99,10,Medium,Payment process times out,Increase timeout or optimize
