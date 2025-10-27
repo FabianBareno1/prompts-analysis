@@ -1,4 +1,4 @@
-// Mostrar/ocultar summary y detalle
+// Show/hide summary and detail
 document.addEventListener('DOMContentLoaded', () => {
   const summaryBtn = document.getElementById('show-summary-btn');
   const detailBtn = document.getElementById('show-detail-btn');
@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
       summaryContainer.style.display = 'none';
       chartSvg.style.display = 'block';
     };
-    // Por defecto, mostrar el detalle (gráfico)
+  // By default, show the detail (chart)
     summaryContainer.style.display = 'none';
     chartSvg.style.display = 'block';
   }
@@ -24,7 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 // --- State and DOM references ---
-// --- Dynamic file upload group rendering ---
 export const chart = d3.select('#chart');
 export const summaryMd = document.getElementById('summary-md');
 export const errorMessage = document.getElementById('error-message');
@@ -61,8 +60,8 @@ export function clearError() {
 }
 
 /**
- * Actualiza el markdown summary mostrado arriba del gráfico según el type.
- * @param {string} type - Sección activa.
+ * Updates the markdown summary shown above the chart according to the type.
+ * @param {string} type - Active section.
  */
 export function updateSummaryMarkdown(type) {
   if (!summaryMd) return;
@@ -87,16 +86,22 @@ export function renderChart(data, type, chartType) {
   chart.selectAll('*').remove();
   chart.style('display', 'block');
   if (!data || data.length === 0) {
-    showError('No data available for this section.');
+  showError('No data available for this section.');
     return;
   }
   csvSummary.style.display = 'none';
-  const width = document.getElementById('chart-container').clientWidth - 40;
-  const height = document.getElementById('chart-container').clientHeight - 60;
+  const chartArea = document.getElementById('chart-area');
+  const width = chartArea ? chartArea.clientWidth - 40 : 600;
+  const height = chartArea ? chartArea.clientHeight - 60 : 400;
   function hasColumn(col) {
     return data.length > 0 && Object.keys(data[0]).some(k => k.trim().toLowerCase() === col.trim().toLowerCase());
   }
-  chart.attr('width', width).attr('height', height);
+  // SVG responsive
+  chart
+    .attr('width', '100%')
+    .attr('height', '100%')
+    .attr('viewBox', `0 0 ${width} ${height}`)
+    .attr('preserveAspectRatio', 'xMidYMid meet');
   const colorScale = d3.scaleOrdinal(d3.schemeTableau10);
   function drawBarChart(labels, values, title, xLabel, yLabel) {
     const margin = {top: 40, right: 30, bottom: 60, left: 60};
@@ -262,7 +267,7 @@ export function renderChart(data, type, chartType) {
  */
 export function parseCSVFile(file, type, chartType) {
   if (!file) {
-    showError('No file selected.');
+  showError('No file selected.');
     return;
   }
   loader.style.display = 'block';
@@ -275,7 +280,7 @@ export function parseCSVFile(file, type, chartType) {
         const data = d3.csvParse(text);
         loader.style.display = 'none';
         if (data.length === 0) {
-          showError('El archivo CSV está vacío.');
+          showError('The CSV file is empty.');
           return;
         }
         let requiredCols = [];
@@ -306,8 +311,8 @@ export function parseCSVFile(file, type, chartType) {
         let summaryHtml = `<strong>Columnas detectadas:</strong><ul style='margin:0.5em 0 0 1.2em;'>`;
         columns.forEach(col => { summaryHtml += `<li>${col}</li>`; });
         summaryHtml += '</ul>';
-        summaryHtml += `<div style='color:#f87171;margin-top:0.5em;'>Faltan columnas requeridas: <b>${missing.join(', ')}</b></div>`;
-        summaryHtml += `<div style='margin-top:0.7em;'><button id='continue-csv-btn' style='background:#3b82f6;color:#fff;border:none;padding:0.5em 1.2em;border-radius:0.4em;cursor:pointer;'>Graficar de todos modos</button></div>`;
+  summaryHtml += `<div style='color:#f87171;margin-top:0.5em;'>Missing required columns: <b>${missing.join(', ')}</b></div>`;
+  summaryHtml += `<div style='margin-top:0.7em;'><button id='continue-csv-btn' style='background:#3b82f6;color:#fff;border:none;padding:0.5em 1.2em;border-radius:0.4em;cursor:pointer;'>Chart anyway</button></div>`;
         csvSummary.innerHTML = summaryHtml;
         csvSummary.style.display = 'block';
         document.getElementById('continue-csv-btn').onclick = function() {
@@ -341,9 +346,16 @@ export async function tryLoadServerCSV(type, chartType) {
   else if (type === 'regression-risk') csvPath = 'files/details/RegressionRisk.csv';
   else if (type === 'semantic-bug-detection') csvPath = 'files/details/SemanticBugDetection.csv';
   try {
-    const data = await d3.csv(csvPath);
-    if (!data || data.length === 0) throw new Error('CSV empty or invalid');
-    sectionData[type] = data;
+  // Load CSV ignoring empty lines and comments
+    const data = await d3.csv(csvPath, row => {
+  // Ignore empty rows or comment rows
+      if (!row || Object.values(row).every(v => v === '' || v == null)) return null;
+      if (Object.values(row)[0] && Object.values(row)[0].startsWith('//')) return null;
+      return row;
+    });
+  if (!data || data.filter(Boolean).length === 0) throw new Error('CSV empty or invalid');
+  const filteredData = data.filter(Boolean);
+  sectionData[type] = filteredData;
     if (typeof updateChartTypeSelectorVisibility === 'function') updateChartTypeSelectorVisibility();
     if (typeof showFileInputForSection === 'function') showFileInputForSection(type);
     const activeBtn = document.querySelector('nav button.active');
@@ -351,7 +363,7 @@ export async function tryLoadServerCSV(type, chartType) {
       let chartTypeToUse = chartType;
       const selector = window.chartTypeSelectors ? window.chartTypeSelectors[type] : null;
       if (type === 'regression-risk') {
-  const uniqueCategories = Array.from(new Set(data.map(row => row.Category))).filter(Boolean);
+        const uniqueCategories = Array.from(new Set(filteredData.map(row => row.Category))).filter(Boolean);
         if (uniqueCategories.length > 1) {
           chartTypeToUse = 'category';
           if (selector) selector.value = 'category';
@@ -365,11 +377,14 @@ export async function tryLoadServerCSV(type, chartType) {
       } else if (selector && selector.value) {
         chartTypeToUse = selector.value;
       }
-      renderChart(data, type, chartTypeToUse || (type === 'regression-risk' ? 'severity' : 'module'));
+      // Recalculating chart size
+      setTimeout(() => {
+        renderChart(filteredData, type, chartTypeToUse || (type === 'regression-risk' ? 'severity' : 'module'));
+      }, 0);
     }
   } catch (err) {
     sectionData[type] = null;
-    showError('Could not load CSV file from server. You can upload it manually.');
+  showError('Could not load CSV file from server. You can upload it manually.');
     if (typeof updateChartTypeSelectorVisibility === 'function') updateChartTypeSelectorVisibility();
     if (typeof showFileInputForSection === 'function') showFileInputForSection(type);
   }
