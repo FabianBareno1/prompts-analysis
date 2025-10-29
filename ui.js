@@ -1,5 +1,5 @@
 import { hideAllChartTypeSelectors } from './uiHelpers.js';
-const SECTIONS = ['unit-testing', 'security-posture', 'regression-risk', 'semantic-bug-detection'];
+const SECTIONS = ['unit-testing', 'security-posture', 'semantic-bug-detection'];
 
 
 import {
