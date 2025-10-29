@@ -11,7 +11,8 @@ function parseCSV(text) {
     const values = line.split(',').map(v => v.trim());
     const obj = {};
     headers.forEach((h, i) => {
-      if (h === 'Commits' || h === 'Modifications') {
+      // Parse 'churn' as a number, keep other fields as string
+      if (h.toLowerCase() === 'churn') {
         const num = Number(values[i]);
         obj[h] = (!isNaN(num) && values[i] !== '') ? num : 0;
       } else {
@@ -24,41 +25,35 @@ function parseCSV(text) {
 
 export async function generateModuleHeatmapData() {
   // Load the mocked CSV
-  const response = await fetch('./files/details/module_commits_last_12_months.csv');
+  const response = await fetch('./files/details/dir_month_churn.csv');
   const text = await response.text();
   const data = parseCSV(text);
   // Axes
-  const modules = [...new Set(data.map(d => d.Module))];
-  const months = [...new Set(data.map(d => d.Month))];
-  // Commits matrix
-  const commitsMatrix = modules.map(mod =>
+  const modules = [...new Set(data.map(d => d.module || d.Module))];
+  const months = [...new Set(data.map(d => d.month || d.Month))];
+  // Churn matrix
+  const churnMatrix = modules.map(mod =>
     months.map(month => {
-      const found = data.find(d => d.Module === mod && d.Month === month);
-      return found ? Number(found.Commits) : 0;
+      const found = data.find(d => (d.module || d.Module) === mod && (d.month || d.Month) === month);
+      return found ? Number(found.churn || found.Churn) : 0;
     })
   );
-  // Modifications matrix
-  const modsMatrix = modules.map(mod =>
-    months.map(month => {
-      const found = data.find(d => d.Module === mod && d.Month === month);
-      return found ? Number(found.Modifications) : 0;
-    })
-  );
-  return {modules, months, commitsMatrix, modsMatrix};
+  return { modules, months, churnMatrix };
 }
 
 
-export function renderModuleHeatmap({modules, months, commitsMatrix, modsMatrix}) {
+export function renderModuleHeatmap({ modules, months, churnMatrix }) {
   const container = d3.select('#heatmap-container');
   container.selectAll('*').remove();
-  const margin = {top: 40, right: 80, bottom: 40, left: 100};
+  const margin = { top: 40, right: 80, bottom: 40, left: 100 };
   const width = (container.node().clientWidth || 900) - margin.left - margin.right;
   const height = (container.node().clientHeight || 400) - margin.top - margin.bottom;
   const cellWidth = width / months.length;
   const cellHeight = height / modules.length;
-  // Change color scale: d3.interpolateYlGn (green) or d3.interpolateYlGnBu (blue-green)
-  const colorScale = d3.scaleSequential(d3.interpolateYlGn)
-    .domain([0, d3.max(commitsMatrix.flat())]);
+  // Use the 'churn' field as the value for the heatmap
+  // Change color scale to red palette
+  const colorScale = d3.scaleSequential(d3.interpolateReds)
+    .domain([0, d3.max(churnMatrix.flat())]);
   const svg = container.append('svg')
     .attr('width', width + margin.left + margin.right)
     .attr('height', height + margin.top + margin.bottom);
@@ -66,20 +61,20 @@ export function renderModuleHeatmap({modules, months, commitsMatrix, modsMatrix}
   // Cells
   const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
   g.selectAll('g')
-    .data(commitsMatrix)
+    .data(churnMatrix)
     .enter()
     .append('g')
     .attr('transform', (d, i) => `translate(0,${i * cellHeight})`)
     .selectAll('rect')
-    .data((row, i) => row.map((d, j) => ({commits: d, mods: modsMatrix[i][j], month: months[j], module: modules[i]})))
+    .data((row, i) => row.map((d, j) => ({ churn: d, month: months[j], module: modules[i] })))
     .enter()
     .append('rect')
     .attr('x', (d, j) => j * cellWidth)
     .attr('width', cellWidth)
     .attr('height', cellHeight)
-    .attr('fill', d => colorScale(d.commits))
+    .attr('fill', d => colorScale(d.churn))
     .append('title')
-    .text(d => `Module: ${d.module}\nMonth: ${d.month}\nCommits: ${d.commits}\nModifications: ${d.mods}`);
+    .text(d => `Module: ${d.module}\nMonth: ${d.month}\nChurn: ${d.churn}`);
 
   // X axis (months)
   svg.append('g')
@@ -90,7 +85,7 @@ export function renderModuleHeatmap({modules, months, commitsMatrix, modsMatrix}
     .attr('transform', 'rotate(-45)')
     .attr('text-anchor', 'end');
   svg.append('text')
-    .attr('x', margin.left + width/2)
+    .attr('x', margin.left + width / 2)
     .attr('y', height + margin.top + 40)
     .attr('text-anchor', 'middle')
     .attr('fill', '#fff')
@@ -105,7 +100,7 @@ export function renderModuleHeatmap({modules, months, commitsMatrix, modsMatrix}
     .style('font-size', '10px');
   svg.append('text')
     .attr('transform', `rotate(-90)`)
-    .attr('x', -margin.top - height/2)
+    .attr('x', -margin.top - height / 2)
     .attr('y', margin.left - 70)
     .attr('text-anchor', 'middle')
     .attr('fill', '#fff')
@@ -132,7 +127,7 @@ export function renderModuleHeatmap({modules, months, commitsMatrix, modsMatrix}
   for (let i = 0; i <= 100; i++) {
     gradient.append('stop')
       .attr('offset', `${i}%`)
-      .attr('stop-color', colorScale(colorScale.domain()[0] + (colorScale.domain()[1]-colorScale.domain()[0])*i/100));
+      .attr('stop-color', colorScale(colorScale.domain()[0] + (colorScale.domain()[1] - colorScale.domain()[0]) * i / 100));
   }
   legend.append('rect')
     .attr('width', legendWidth)
@@ -144,12 +139,12 @@ export function renderModuleHeatmap({modules, months, commitsMatrix, modsMatrix}
     .selectAll('text')
     .style('font-size', '10px');
   legend.append('text')
-    .attr('x', legendWidth/2)
+    .attr('x', legendWidth / 2)
     .attr('y', legendHeight + 20)
     .attr('text-anchor', 'middle')
     .attr('fill', '#fff')
     .style('font-size', '12px')
-    .text('Commits');
+    .text('Churn');
 }
 
 export function showHeatmapIfNeeded() {
@@ -158,7 +153,7 @@ export function showHeatmapIfNeeded() {
   const mainChart = document.getElementById('chart');
   regressionBtn.addEventListener('click', async () => {
     heatmapContainer.style.display = 'block';
-    mainChart.style.display = 'none';
+    mainChart.style.display = 'block';
     const heatmapData = await generateModuleHeatmapData();
     renderModuleHeatmap(heatmapData);
   });
