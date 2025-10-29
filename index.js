@@ -68,10 +68,18 @@ export function updateSummaryMarkdown(type) {
   let mdPath = '';
   if (type === 'unit-testing') mdPath = 'files/summaries/UnitTestingSummary.md';
   else if (type === 'security-posture') mdPath = 'files/summaries/SecurityPostureSummary.md';
-  else if (type === 'regression-risk') mdPath = 'files/summaries/RegressionRiskSummary.md';
   else if (type === 'semantic-bug-detection') mdPath = 'files/summaries/SemanticBugDetectionSummary.md';
+  // Do not show markdown for regression-risk
   summaryMd.setAttribute('src', mdPath);
-  summaryMd.style.display = mdPath ? 'block' : 'none';
+  if (type === 'regression-risk') {
+    summaryMd.style.display = 'none';
+    const summaryContainer = document.getElementById('summary-md-container');
+    if (summaryContainer) summaryContainer.style.display = 'none';
+  } else {
+    summaryMd.style.display = mdPath ? 'block' : 'none';
+    const summaryContainer = document.getElementById('summary-md-container');
+    if (summaryContainer) summaryContainer.style.display = mdPath ? 'block' : 'none';
+  }
 }
 
 /**
@@ -184,6 +192,37 @@ export function renderChart(data, type, chartType) {
       .attr('font-size', '1.3rem')
       .text(title);
   }
+  // Helper functions for safe aggregation
+  function aggregateByColumn(data, column, filterEmpty = false) {
+    if (filterEmpty) {
+      return Array.from(
+        d3.rollup(
+          data.filter(row => row[column] && row[column].trim() !== ''),
+          v => v.length,
+          d => d[column]
+        ),
+        ([key, count]) => ({ key, count })
+      );
+    } else {
+      return Array.from(
+        d3.rollup(
+          data,
+          v => v.length,
+          d => d[column] || d[column.toLowerCase()]
+        ),
+        ([key, count]) => ({ key, count })
+      );
+    }
+  }
+
+  function renderBarOrPie(agg, chartType, title, xLabel, yLabel) {
+    if (chartType === 'pie') {
+      drawPieChart(agg.map(d => d.key), agg.map(d => d.count), title);
+    } else {
+      drawBarChart(agg.map(d => d.key), agg.map(d => d.count), title, xLabel, yLabel);
+    }
+  }
+
   let agg = [];
   if (!chartType) {
     const selector = window.chartTypeSelectors ? window.chartTypeSelectors[type] : null;
@@ -193,69 +232,52 @@ export function renderChart(data, type, chartType) {
   if (type === 'unit-testing') {
     if (chartType === 'module') {
       if (!hasColumn('Module')) { showError('CSV is missing the "Module" column.'); return; }
-      const counts = d3.rollup(data, v => v.length, d => d.Module || d.module);
-      agg = Array.from(counts, ([Module, Count]) => ({ Module, Count }));
-      drawBarChart(agg.map(d => d.Module), agg.map(d => d.Count), 'Tests per Module', 'Module', 'Count');
+      agg = aggregateByColumn(data, 'Module');
+      renderBarOrPie(agg, 'bar', 'Tests per Module', 'Module', 'Count');
     } else if (chartType === 'severity') {
       if (!hasColumn('Severity')) { showError('CSV is missing the "Severity" column.'); return; }
-      const counts = d3.rollup(data, v => v.length, d => d.Severity || d.severity);
-      agg = Array.from(counts, ([Severity, Count]) => ({ Severity, Count }));
-      drawBarChart(agg.map(d => d.Severity), agg.map(d => d.Count), 'Tests per Severity', 'Severity', 'Count');
+      agg = aggregateByColumn(data, 'Severity');
+      renderBarOrPie(agg, 'bar', 'Tests per Severity', 'Severity', 'Count');
     } else if (chartType === 'pie') {
       if (!hasColumn('Module')) { showError('CSV is missing the "Module" column.'); return; }
-      const counts = d3.rollup(data, v => v.length, d => d.Module || d.module);
-      agg = Array.from(counts, ([Module, Count]) => ({ Module, Count }));
-      drawPieChart(agg.map(d => d.Module), agg.map(d => d.Count), 'Tests Distribution (Pie)');
+      agg = aggregateByColumn(data, 'Module');
+      renderBarOrPie(agg, 'pie', 'Tests Distribution (Pie)', '', '');
     }
   } else if (type === 'semantic-bug-detection') {
     if (chartType === 'module') {
       if (!hasColumn('Module')) { showError('CSV is missing the "Module" column.'); return; }
-      const filtered = data.filter(row => row.Module && row.Module.trim() !== '');
-      const counts = d3.rollup(filtered, v => v.length, d => d.Module);
-      agg = Array.from(counts, ([Module, Count]) => ({ Module, Count }));
-      drawBarChart(agg.map(d => d.Module), agg.map(d => d.Count), 'Issues per Module', 'Module', 'Count');
+      agg = aggregateByColumn(data, 'Module', true);
+      renderBarOrPie(agg, 'bar', 'Issues per Module', 'Module', 'Count');
     } else if (chartType === 'severity') {
       if (!hasColumn('Severity')) { showError('CSV is missing the "Severity" column.'); return; }
-      const filtered = data.filter(row => row.Severity && row.Severity.trim() !== '');
-      const counts = d3.rollup(filtered, v => v.length, d => d.Severity);
-      agg = Array.from(counts, ([Severity, Count]) => ({ Severity, Count }));
-      drawBarChart(agg.map(d => d.Severity), agg.map(d => d.Count), 'Issues per Severity', 'Severity', 'Count');
+      agg = aggregateByColumn(data, 'Severity', true);
+      renderBarOrPie(agg, 'bar', 'Issues per Severity', 'Severity', 'Count');
     } else if (chartType === 'category') {
       if (!hasColumn('Category')) { showError('CSV is missing the "Category" column.'); return; }
-      const filtered = data.filter(row => row.Category && row.Category.trim() !== '');
-      const counts = d3.rollup(filtered, v => v.length, d => d.Category);
-      agg = Array.from(counts, ([Category, Count]) => ({ Category, Count }));
-      drawPieChart(agg.map(d => d.Category), agg.map(d => d.Count), 'Issues per Category');
+      agg = aggregateByColumn(data, 'Category', true);
+      renderBarOrPie(agg, 'pie', 'Issues per Category', '', '');
     }
   } else if (type === 'security-posture') {
     if (chartType === 'severity') {
       if (!hasColumn('Severity')) { showError('CSV is missing the "Severity" column.'); return; }
-      const counts = d3.rollup(data, v => v.length, d => d.Severity);
-      agg = Array.from(counts, ([Severity, Count]) => ({ Severity, Count }));
-      drawBarChart(agg.map(d => d.Severity), agg.map(d => d.Count), 'Items per Severity', 'Severity', 'Count');
+      agg = aggregateByColumn(data, 'Severity');
+      renderBarOrPie(agg, 'bar', 'Items per Severity', 'Severity', 'Count');
     } else if (chartType === 'category') {
       if (!hasColumn('Category')) { showError('CSV is missing the "Category" column.'); return; }
-      const counts = d3.rollup(data, v => v.length, d => d.Category);
-      agg = Array.from(counts, ([Category, Count]) => ({ Category, Count }));
-      drawPieChart(agg.map(d => d.Category), agg.map(d => d.Count), 'Items per Category');
+      agg = aggregateByColumn(data, 'Category');
+      renderBarOrPie(agg, 'pie', 'Items per Category', '', '');
     }
   } else if (type === 'regression-risk') {
-    if (chartType === 'severity') {
-      if (!hasColumn('Severity')) { showError('CSV is missing the "Severity" column.'); return; }
-      const counts = d3.rollup(data, v => v.length, d => d.Severity);
-      agg = Array.from(counts, ([Severity, Count]) => ({ Severity, Count }));
-      drawBarChart(agg.map(d => d.Severity), agg.map(d => d.Count), 'Items per Severity', 'Severity', 'Count');
-    } else if (chartType === 'category') {
-      if (!hasColumn('Category')) { showError('CSV is missing the "Category" column.'); return; }
-      const counts = d3.rollup(data, v => v.length, d => d.Category);
-      agg = Array.from(counts, ([Category, Count]) => ({ Category, Count }));
-      drawPieChart(agg.map(d => d.Category), agg.map(d => d.Count), 'Items per Category');
-    } else if (chartType === 'module') {
-      if (!hasColumn('Module')) { showError('CSV is missing the "Module" column.'); return; }
-      const counts = d3.rollup(data, v => v.length, d => d.Module);
-      agg = Array.from(counts, ([Module, Count]) => ({ Module, Count }));
-      drawPieChart(agg.map(d => d.Module), agg.map(d => d.Count), 'Items per Module');
-    }
+      // Show commit bar charts above heatmap ONLY in regression-risk
+      if (typeof window.renderCommitsBarCharts === 'function') window.renderCommitsBarCharts();
+      // Always show heatmap
+      const heatmapContainer = document.getElementById('heatmap-container');
+      if (heatmapContainer) heatmapContainer.style.display = 'block';
+      // Hide main chart SVG to avoid empty space
+      chart.style('display', 'none');
+  } else {
+    // For ALL other sections, always hide commit bar charts
+    if (typeof window.hideCommitsBarCharts === 'function') window.hideCommitsBarCharts();
   }
 }
 
@@ -426,11 +448,6 @@ export function updateChartTypeSelectorVisibility() {
     'security-posture': [
       { value: 'severity', label: 'Items per Severity' },
       { value: 'category', label: 'Items per Category' }
-    ],
-    'regression-risk': [
-      { value: 'severity', label: 'Items per Severity' },
-      { value: 'category', label: 'Items per Category' },
-      { value: 'module', label: 'Items per Module' }
     ]
   };
   Object.keys(window.chartTypeSelectors).forEach(type => {

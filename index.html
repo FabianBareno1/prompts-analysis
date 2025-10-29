@@ -98,37 +98,6 @@
           <select id="security-posture-chart-type" aria-label="Chart type for Security Posture"
             style="display: none"></select>
         </div>
-        <div class="file-upload-group" id="regression-risk-upload"
-          style="display: none; align-items: center; gap: 0.3rem">
-          <label for="regression-risk-file" style="
-                font-size: 0.98rem;
-                color: #60a5fa;
-                font-weight: 500;
-                margin-bottom: 0;
-              ">CSV Regression Risk:</label>
-          <input type="file" id="regression-risk-file" accept=".csv" aria-label="Upload CSV for Regression Risk"
-            style="display: none" />
-          <button type="button" class="file-upload-btn"
-            onclick="document.getElementById('regression-risk-file').click()"
-            aria-label="Select CSV for Regression Risk">
-            <span class="file-upload-icon" aria-hidden="true">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"
-                style="vertical-align: middle">
-                <rect x="3" y="14" width="14" height="3" rx="1.5" fill="#374151" />
-                <path d="M10 14V5" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M7 8l3-3 3 3" stroke="#60a5fa" stroke-width="2" stroke-linecap="round"
-                  stroke-linejoin="round" />
-              </svg>
-            </span>
-            <span id="regression-risk-file-label">Upload a File</span>
-          </button>
-          <button id="regression-risk-advanced-btn" class="advanced-btn"
-            aria-label="Show advanced chart options for Regression Risk" tabindex="0">
-            Advanced options
-          </button>
-          <select id="regression-risk-chart-type" aria-label="Chart type for Regression Risk"
-            style="display: none"></select>
-        </div>
         <div class="file-upload-group" id="semantic-bug-detection-upload"
           style="display: none; align-items: center; gap: 0.3rem">
           <label for="semantic-bug-detection-file" style="
@@ -194,7 +163,6 @@
     }
     updateFileLabel("unit-testing-file", "unit-testing-file-label");
     updateFileLabel("security-posture-file", "security-posture-file-label");
-    updateFileLabel("regression-risk-file", "regression-risk-file-label");
     updateFileLabel(
       "semantic-bug-detection-file",
       "semantic-bug-detection-file-label"
@@ -203,7 +171,13 @@
   <script type="module" src="./index.js"></script>
   <script type="module" src="./ui.js"></script>
   <script type="module">
-    import { showHeatmapIfNeeded } from "./uiHelpers.js";
+    import {
+      showHeatmapIfNeeded,
+      renderCommitsBarCharts,
+      hideCommitsBarCharts,
+      renderHeatmap,
+      hideHeatmap
+    } from './uiHelpers.js';
     showHeatmapIfNeeded();
   </script>
 </body>

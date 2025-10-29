@@ -1,7 +1,163 @@
-// UI helper functions for the audit dashboard
-// All helpers here are UI-specific and stateless
 
-// --- HEATMAP HELPERS ---
+const SECTION_IDS = ['regression-risk', 'unit-testing', 'security-posture', 'semantic-bug-detection'];
+
+// UI element selectors
+const SELECTORS = {
+  chartArea: 'chart-area',
+  heatmapContainer: 'heatmap-container',
+  mainChart: 'chart',
+  commitsBarCharts: 'commits-bar-charts',
+  weekBar: 'commits-week-bar',
+  monthBar: 'commits-month-bar',
+};
+
+/**
+ * Attaches section switching logic and ensures heatmap/bar charts are shown only for Regression Risk.
+ */
+export function showHeatmapIfNeeded() {
+  SECTION_IDS.forEach(id => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.addEventListener('click', () => updateDashboardUI(id));
+  });
+}
+
+/**
+ * Renders the commit bar charts for Regression Risk section.
+ * Loads data from CSV files and displays two bar charts.
+ */
+export async function renderCommitsBarCharts() {
+  const chartArea = document.getElementById(SELECTORS.chartArea);
+  if (!chartArea) return;
+  hideCommitsBarCharts();
+  // Create the container
+  const container = document.createElement('div');
+  container.id = SELECTORS.commitsBarCharts;
+  container.style.width = '100%';
+  container.style.display = 'flex';
+  container.style.flexDirection = 'column';
+  container.style.gap = '2rem';
+  container.style.marginBottom = '1.5rem';
+  // Week bar
+  const weekBar = document.createElement('div');
+  weekBar.id = SELECTORS.weekBar;
+  weekBar.style.width = '100%';
+  weekBar.style.minWidth = '350px';
+  weekBar.style.height = '260px';
+  weekBar.style.marginBottom = '2rem';
+  container.appendChild(weekBar);
+  // Month bar
+  const monthBar = document.createElement('div');
+  monthBar.id = SELECTORS.monthBar;
+  monthBar.style.width = '100%';
+  monthBar.style.minWidth = '350px';
+  monthBar.style.height = '260px';
+  container.appendChild(monthBar);
+  // Insert the bar charts just before the heatmap
+  const heatmap = document.getElementById(SELECTORS.heatmapContainer);
+  if (heatmap) {
+    chartArea.insertBefore(container, heatmap);
+  } else {
+    chartArea.appendChild(container);
+  }
+  // Render the charts
+  const weekResp = await fetch('./files/details/commits_by_week.csv');
+  const weekText = await weekResp.text();
+  const weekData = parseCSV(weekText).filter(d => d.weeks && d.commits);
+  const weekLabels = weekData.map(d => d.weeks);
+  const weekValues = weekData.map(d => Number(d.commits));
+  renderBarChart('#' + SELECTORS.weekBar, weekLabels, weekValues, 'Commits per Week', 'Week', 'Commits');
+  const monthResp = await fetch('./files/details/commits_by_month.csv');
+  const monthText = await monthResp.text();
+  const monthData = parseCSV(monthText).filter(d => d.month && d.commits);
+  const monthLabels = monthData.map(d => d.month);
+  const monthValues = monthData.map(d => Number(d.commits));
+  renderBarChart('#' + SELECTORS.monthBar, monthLabels, monthValues, 'Commits per Month', 'Month', 'Commits');
+}
+
+/**
+ * Hides the commit bar charts container if present.
+ */
+export function hideCommitsBarCharts() {
+  const chartArea = document.getElementById(SELECTORS.chartArea);
+  if (!chartArea) return;
+  const container = document.getElementById(SELECTORS.commitsBarCharts);
+  if (container && container.parentNode === chartArea) {
+    chartArea.removeChild(container);
+  }
+}
+
+/**
+ * Renders a bar chart in the specified container.
+ * @param {string} containerSelector - CSS selector for the chart container.
+ * @param {string[]} labels - Array of labels for the x-axis.
+ * @param {number[]} values - Array of values for the y-axis.
+ * @param {string} title - Chart title.
+ * @param {string} xLabel - X-axis label.
+ * @param {string} yLabel - Y-axis label.
+ */
+function renderBarChart(containerSelector, labels, values, title, xLabel, yLabel) {
+  const container = d3.select(containerSelector);
+  container.selectAll('*').remove();
+  let width = container.node().clientWidth || 350;
+  const height = container.node().clientHeight || 260;
+  const margin = { top: 40, right: 30, bottom: 60, left: 60 };
+  const w = width - margin.left - margin.right;
+  const h = height - margin.top - margin.bottom;
+  const svg = container.append('svg')
+    .attr('width', width)
+    .attr('height', height);
+  const x = d3.scaleBand().domain(labels).range([0, w]).padding(0.2);
+  const y = d3.scaleLinear().domain([0, d3.max(values)]).nice().range([h, 0]);
+  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+  // Reduce x-axis label density: show only every 3rd label if crowded
+  const showLabelEvery = (labels.length > 20) ? 3 : 1;
+  g.append('g')
+    .attr('class', 'x-axis')
+    .attr('transform', `translate(0,${h})`)
+    .call(d3.axisBottom(x).tickFormat((d, i) => (i % showLabelEvery === 0 ? d : '')))
+    .selectAll('text')
+    .attr('fill', '#e5e7eb')
+    .attr('font-size', '0.95rem')
+    .attr('transform', 'rotate(-25)')
+    .style('text-anchor', 'end');
+  g.append('g')
+    .attr('class', 'y-axis')
+    .call(d3.axisLeft(y).ticks(6))
+    .selectAll('text')
+    .attr('fill', '#e5e7eb')
+    .attr('font-size', '0.95rem');
+  // Add bars with tooltips
+  g.selectAll('.bar')
+    .data(labels.map((d, i) => ({ label: d, value: values[i] })))
+    .enter()
+    .append('rect')
+    .attr('class', 'bar')
+    .attr('x', d => x(d.label))
+    .attr('y', d => y(d.value))
+    .attr('width', x.bandwidth())
+    .attr('height', d => h - y(d.value))
+    .attr('fill', (d, i) => d3.schemeTableau10[i % 10])
+    .append('title')
+    .text(d => `${xLabel}: ${d.label}\n${yLabel}: ${d.value}`);
+  g.selectAll('.label')
+    .data(labels.map((d, i) => ({ label: d, value: values[i] })))
+    .enter()
+    .append('text')
+    .attr('x', d => x(d.label) + x.bandwidth() / 2)
+    .attr('y', d => y(d.value) - 6)
+    .attr('text-anchor', 'middle')
+    .attr('fill', '#e5e7eb')
+    .attr('font-size', '0.9rem')
+    .text(d => d.value);
+  svg.append('text')
+    .attr('x', width / 2)
+    .attr('y', margin.top / 2)
+    .attr('text-anchor', 'middle')
+    .attr('fill', '#e5e7eb')
+    .attr('font-size', '1.1rem')
+    .text(title);
+}
 
 // Helper to parse CSV (simple, no external libraries)
 function parseCSV(text) {
@@ -23,15 +179,15 @@ function parseCSV(text) {
   });
 }
 
+/**
+ * Loads and prepares heatmap data from CSV.
+ */
 export async function generateModuleHeatmapData() {
-  // Load the mocked CSV
   const response = await fetch('./files/details/dir_month_churn.csv');
   const text = await response.text();
   const data = parseCSV(text);
-  // Axes
   const modules = [...new Set(data.map(d => d.module || d.Module))];
   const months = [...new Set(data.map(d => d.month || d.Month))];
-  // Churn matrix
   const churnMatrix = modules.map(mod =>
     months.map(month => {
       const found = data.find(d => (d.module || d.Module) === mod && (d.month || d.Month) === month);
@@ -41,7 +197,9 @@ export async function generateModuleHeatmapData() {
   return { modules, months, churnMatrix };
 }
 
-
+/**
+ * Renders the module churn heatmap.
+ */
 export function renderModuleHeatmap({ modules, months, churnMatrix }) {
   const container = d3.select('#heatmap-container');
   container.selectAll('*').remove();
@@ -50,15 +208,11 @@ export function renderModuleHeatmap({ modules, months, churnMatrix }) {
   const height = (container.node().clientHeight || 400) - margin.top - margin.bottom;
   const cellWidth = width / months.length;
   const cellHeight = height / modules.length;
-  // Use the 'churn' field as the value for the heatmap
-  // Change color scale to red palette
   const colorScale = d3.scaleSequential(d3.interpolateReds)
     .domain([0, d3.max(churnMatrix.flat())]);
   const svg = container.append('svg')
     .attr('width', width + margin.left + margin.right)
     .attr('height', height + margin.top + margin.bottom);
-
-  // Cells
   const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
   g.selectAll('g')
     .data(churnMatrix)
@@ -75,8 +229,6 @@ export function renderModuleHeatmap({ modules, months, churnMatrix }) {
     .attr('fill', d => colorScale(d.churn))
     .append('title')
     .text(d => `Module: ${d.module}\nMonth: ${d.month}\nChurn: ${d.churn}`);
-
-  // X axis (months)
   svg.append('g')
     .attr('transform', `translate(${margin.left},${height + margin.top})`)
     .call(d3.axisBottom(d3.scaleBand().domain(months).range([0, width])))
@@ -91,8 +243,6 @@ export function renderModuleHeatmap({ modules, months, churnMatrix }) {
     .attr('fill', '#fff')
     .style('font-size', '13px')
     .text('Month');
-
-  // Y axis (modules)
   svg.append('g')
     .attr('transform', `translate(${margin.left},${margin.top})`)
     .call(d3.axisLeft(d3.scaleBand().domain(modules).range([0, height])))
@@ -106,8 +256,6 @@ export function renderModuleHeatmap({ modules, months, churnMatrix }) {
     .attr('fill', '#fff')
     .style('font-size', '13px')
     .text('Module');
-
-  // Legend
   const legendHeight = 120;
   const legendWidth = 16;
   const legendScale = d3.scaleLinear()
@@ -117,7 +265,6 @@ export function renderModuleHeatmap({ modules, months, churnMatrix }) {
     .ticks(6);
   const legend = svg.append('g')
     .attr('transform', `translate(${width + margin.left + 30},${margin.top})`);
-  // Gradient
   const defs = svg.append('defs');
   const gradientId = 'heatmap-gradient';
   const gradient = defs.append('linearGradient')
@@ -147,23 +294,43 @@ export function renderModuleHeatmap({ modules, months, churnMatrix }) {
     .text('Churn');
 }
 
-export function showHeatmapIfNeeded() {
-  const regressionBtn = document.getElementById('regression-risk');
-  const heatmapContainer = document.getElementById('heatmap-container');
-  const mainChart = document.getElementById('chart');
-  regressionBtn.addEventListener('click', async () => {
-    heatmapContainer.style.display = 'block';
-    mainChart.style.display = 'block';
-    const heatmapData = await generateModuleHeatmapData();
-    renderModuleHeatmap(heatmapData);
-  });
-  ['unit-testing', 'security-posture', 'semantic-bug-detection'].forEach(id => {
-    document.getElementById(id).addEventListener('click', () => {
-      heatmapContainer.style.display = 'none';
-      mainChart.style.display = 'block';
-      heatmapContainer.innerHTML = '';
-    });
-  });
+/**
+ * Updates the dashboard UI based on the selected section.
+ * Only renders commit bar charts and heatmap for Regression Risk.
+ * @param {string} sectionId - The id of the selected section.
+ */
+export function updateDashboardUI(sectionId) {
+  hideCommitsBarCharts();
+  hideHeatmap();
+  const mainChart = document.getElementById(SELECTORS.mainChart);
+  if (sectionId === 'regression-risk') {
+    if (mainChart) mainChart.style.display = 'none';
+    renderCommitsBarCharts();
+    renderHeatmap();
+  } else {
+    if (mainChart) mainChart.style.display = '';
+  }
+}
+
+/**
+ * Renders the heatmap for Regression Risk section.
+ */
+export function renderHeatmap() {
+  const heatmapContainer = document.getElementById(SELECTORS.heatmapContainer);
+  if (!heatmapContainer) return;
+  heatmapContainer.style.display = 'block';
+  heatmapContainer.innerHTML = '';
+  generateModuleHeatmapData().then(renderModuleHeatmap);
+}
+
+/**
+ * Hides the heatmap container if present.
+ */
+export function hideHeatmap() {
+  const heatmapContainer = document.getElementById(SELECTORS.heatmapContainer);
+  if (!heatmapContainer) return;
+  heatmapContainer.style.display = 'none';
+  heatmapContainer.innerHTML = '';
 }
 
 /**
