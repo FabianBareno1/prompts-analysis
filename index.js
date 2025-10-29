@@ -153,14 +153,10 @@ export function renderChart(data, type, chartType) {
       .attr('font-size', '1.3rem')
       .text(title);
   }
-function drawPieChart(labels, values, title) {
+  function drawPieChart(labels, values, title) {
     const radius = Math.min(width, height) / 2 - 40;
     const g = chart.append('g').attr('transform', `translate(${width / 2},${height / 2 + 20})`);
     const pie = d3.pie().value(d => d.value);
-<<<<<<< ours
-    const dataPie = labels.map((d, i) => ({ label: d, value: values[i] }));
-    const arcs = pie(dataPie);
-=======
 
     // Aggregate small portions into "Other"
     const threshold = 2; // Define the threshold for small portions
@@ -170,7 +166,7 @@ function drawPieChart(labels, values, title) {
     const filteredData = aggregatedData.filter(d => d.value > threshold);
 
     if (otherValue > 0) {
-        filteredData.push({ label: 'Other', value: otherValue });
+      filteredData.push({ label: 'Other', value: otherValue });
     }
 
     const arcs = pie(filteredData);
@@ -189,7 +185,6 @@ function drawPieChart(labels, values, title) {
       return lum > 0.55 ? '#111827' : '#ffffff';
     }
 
->>>>>>> theirs
     g.selectAll('path')
       .data(arcs)
       .enter()
@@ -215,7 +210,7 @@ function drawPieChart(labels, values, title) {
         const angle = d.endAngle - d.startAngle;
         return angle > 0.4 ? '0.95rem' : '0.7rem';
       })
-      .each(function(d) {
+      .each(function (d) {
         const el = d3.select(this);
         const label = `${d.data.label}: ${d.data.value}`;
         // If slice is very small, show only the value to avoid overflow
