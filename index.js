@@ -165,25 +165,56 @@ export function renderChart(data, type, chartType) {
     const radius = Math.min(width, height) / 2 - 40;
     const g = chart.append('g').attr('transform', `translate(${width / 2},${height / 2 + 20})`);
     const pie = d3.pie().value(d => d.value);
-    const dataPie = labels.map((d, i) => ({ label: d, value: values[i] }));
-    const arcs = pie(dataPie);
+
+    // Aggregate small portions into "Other"
+    const threshold = 2; // Define the threshold for small portions
+    const aggregatedData = labels.map((label, i) => ({ label, value: values[i] }));
+    const smallPortions = aggregatedData.filter(d => d.value <= threshold);
+    const otherValue = smallPortions.reduce((sum, d) => sum + d.value, 0);
+    const filteredData = aggregatedData.filter(d => d.value > threshold);
+
+    if (otherValue > 0) {
+      filteredData.push({ label: 'Other', value: otherValue });
+    }
+
+    const arcs = pie(filteredData);
+
+    const arcGenerator = d3.arc().innerRadius(radius * 0.45).outerRadius(radius);
+    const outerArc = d3.arc().innerRadius(radius * 0.65).outerRadius(radius * 0.85); // Reduced radius for better fit
+
     g.selectAll('path')
       .data(arcs)
       .enter()
       .append('path')
-      .attr('d', d3.arc().innerRadius(radius * 0.45).outerRadius(radius))
+      .attr('d', arcGenerator)
       .attr('fill', (d, i) => colorScale(i))
       .attr('stroke', '#222')
       .attr('stroke-width', 2);
+
+    // Place labels inside the slices using arc centroids. If a slice is too small, place label at centroid with smaller font.
     g.selectAll('text')
       .data(arcs)
       .enter()
       .append('text')
-      .attr('transform', d => `translate(${d3.arc().innerRadius(radius * 0.7).outerRadius(radius).centroid(d)})`)
+      .attr('transform', d => {
+        const pos = arcGenerator.centroid(d);
+        return `translate(${pos})`;
+      })
       .attr('text-anchor', 'middle')
-      .attr('fill', '#e5e7eb')
-      .attr('font-size', '1rem')
-      .text(d => `${d.data.label}: ${d.data.value}`);
+      .attr('fill', (d, i) => getContrastColor(colorScale(i)))
+      .attr('font-size', d => {
+        // larger font for larger slices
+        const angle = d.endAngle - d.startAngle;
+        return angle > 0.4 ? '0.95rem' : '0.7rem';
+      })
+      .each(function (d) {
+        const el = d3.select(this);
+        const label = `${d.data.label}: ${d.data.value}`;
+        // If slice is very small, show only the value to avoid overflow
+        const angle = d.endAngle - d.startAngle;
+        el.text(angle > 0.25 ? label : d.data.value);
+      });
+
     chart.append('text')
       .attr('x', width / 2)
       .attr('y', 30)
@@ -191,38 +222,38 @@ export function renderChart(data, type, chartType) {
       .attr('fill', '#e5e7eb')
       .attr('font-size', '1.3rem')
       .text(title);
-  }
-  // Helper functions for safe aggregation
-  function aggregateByColumn(data, column, filterEmpty = false) {
-    if (filterEmpty) {
-      return Array.from(
-        d3.rollup(
-          data.filter(row => row[column] && row[column].trim() !== ''),
-          v => v.length,
-          d => d[column]
-        ),
-        ([key, count]) => ({ key, count })
-      );
-    } else {
-      return Array.from(
-        d3.rollup(
-          data,
-          v => v.length,
-          d => d[column] || d[column.toLowerCase()]
-        ),
-        ([key, count]) => ({ key, count })
-      );
+    // Helper functions for safe aggregation
+    function aggregateByColumn(data, column, filterEmpty = false) {
+      if (filterEmpty) {
+        return Array.from(
+          d3.rollup(
+            data.filter(row => row[column] && row[column].trim() !== ''),
+            v => v.length,
+            d => d[column]
+          ),
+          ([key, count]) => ({ key, count })
+        );
+      } else {
+        return Array.from(
+          d3.rollup(
+            data,
+            v => v.length,
+            d => d[column] || d[column.toLowerCase()]
+          ),
+          ([key, count]) => ({ key, count })
+        );
+      }
     }
-  }
 
-  function renderBarOrPie(agg, chartType, title, xLabel, yLabel) {
-    if (chartType === 'pie') {
-      drawPieChart(agg.map(d => d.key), agg.map(d => d.count), title);
-    } else {
-      drawBarChart(agg.map(d => d.key), agg.map(d => d.count), title, xLabel, yLabel);
+    function renderBarOrPie(agg, chartType, title, xLabel, yLabel) {
+      if (chartType === 'pie') {
+        drawPieChart(agg.map(d => d.key), agg.map(d => d.count), title);
+      } else {
+        drawBarChart(agg.map(d => d.key), agg.map(d => d.count), title, xLabel, yLabel);
+      }
     }
-  }
 
+  }
   let agg = [];
   if (!chartType) {
     const selector = window.chartTypeSelectors ? window.chartTypeSelectors[type] : null;
@@ -263,18 +294,19 @@ export function renderChart(data, type, chartType) {
       agg = aggregateByColumn(data, 'Severity');
       renderBarOrPie(agg, 'bar', 'Items per Severity', 'Severity', 'Count');
     } else if (chartType === 'category') {
-      if (!hasColumn('Category')) { showError('CSV is missing the "Category" column.'); return; }
-      agg = aggregateByColumn(data, 'Category');
-      renderBarOrPie(agg, 'pie', 'Items per Category', '', '');
+      if (!hasColumn('Maintenance State')) { showError('CSV is missing the "Maintenance State" column.'); return; }
+      const counts = d3.rollup(data, v => v.length, d => d['Maintenance State']);
+      agg = Array.from(counts, ([MaintenanceState, Count]) => ({ MaintenanceState, Count }));
+      drawPieChart(agg.map(d => d.MaintenanceState), agg.map(d => d.Count), 'Items per Maintenance State');
     }
   } else if (type === 'regression-risk') {
-      // Show commit bar charts above heatmap ONLY in regression-risk
-      if (typeof window.renderCommitsBarCharts === 'function') window.renderCommitsBarCharts();
-      // Always show heatmap
-      const heatmapContainer = document.getElementById('heatmap-container');
-      if (heatmapContainer) heatmapContainer.style.display = 'block';
-      // Hide main chart SVG to avoid empty space
-      chart.style('display', 'none');
+    // Show commit bar charts above heatmap ONLY in regression-risk
+    if (typeof window.renderCommitsBarCharts === 'function') window.renderCommitsBarCharts();
+    // Always show heatmap
+    const heatmapContainer = document.getElementById('heatmap-container');
+    if (heatmapContainer) heatmapContainer.style.display = 'block';
+    // Hide main chart SVG to avoid empty space
+    chart.style('display', 'none');
   } else {
     // For ALL other sections, always hide commit bar charts
     if (typeof window.hideCommitsBarCharts === 'function') window.hideCommitsBarCharts();
