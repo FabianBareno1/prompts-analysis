@@ -193,9 +193,106 @@ export function renderChart(data, type, chartType) {
   if (type === 'unit-testing') {
     if (chartType === 'module') {
       if (!hasColumn('Module')) { showError('CSV is missing the "Module" column.'); return; }
-      const counts = d3.rollup(data, v => v.length, d => d.Module || d.module);
-      agg = Array.from(counts, ([Module, Count]) => ({ Module, Count }));
-      drawBarChart(agg.map(d => d.Module), agg.map(d => d.Count), 'Tests per Module', 'Module', 'Count');
+    
+    
+        // Group rows by module
+  const grouped = d3.group(data, d => d.Module || d.module);
+  agg = Array.from(grouped, ([Module, rows]) => {
+    // Find numeric columns (excluding module and severity)
+    const numericCols = Object.keys(rows[0]).filter(k => k !== 'Module' && k !== 'module' && k !== 'Severity' && !isNaN(parseFloat(rows[0][k])));
+    const averages = {};
+    numericCols.forEach(col => {
+      const vals = rows.map(r => parseFloat(r[col].replace(',', '.'))).filter(v => !isNaN(v));
+      averages[col] = vals.length > 0 ? (vals.reduce((a, b) => a + b, 0) / vals.length) : null;
+    });
+    // Compute severity based on average lines%
+    let severity = '';
+    const linesCol = Object.keys(rows[0]).find(k => k.trim().toLowerCase() === 'lines%' || k.trim().toLowerCase() === 'linespercent');
+    let avgLines = null;
+    if (linesCol) {
+      const vals = rows.map(r => parseFloat(r[linesCol].replace(',', '.'))).filter(v => !isNaN(v));
+      avgLines = vals.length > 0 ? (vals.reduce((a, b) => a + b, 0) / vals.length) : null;
+      if (avgLines !== null) {
+        if (avgLines < 30) severity = 'High';
+        else if (avgLines <= 70) severity = 'Medium';
+        else severity = 'Low';
+      }
+    }
+        return {
+      Module,
+      ...averages,
+      Severity: severity,
+      Count: rows.length
+    };
+  });
+
+ // Custom bar chart: X = module, Y = avg lines%, color by severity
+  const linesKey = agg.length > 0 ? Object.keys(agg[0]).find(k => k.trim().toLowerCase() === 'lines%' || k.trim().toLowerCase() === 'linespercent') : null;
+  // Color scale by severity
+  const severityColor = severity => {
+    if (severity === 'High') return '#ef4444'; // red
+    if (severity === 'Medium') return '#f59e42'; // orange
+    if (severity === 'Low') return '#22c55e'; // green
+    return '#a1a1aa'; // gray fallback
+  };
+  // Draw custom bar chart with colored bars
+  const margin = {top: 40, right: 30, bottom: 60, left: 60};
+  const w = width - margin.left - margin.right;
+  const h = height - margin.top - margin.bottom;
+  const g = chart.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+  const x = d3.scaleBand().domain(agg.map(d => d.Module)).range([0, w]).padding(0.2);
+  const y = d3.scaleLinear().domain([0, 100]).nice().range([h, 0]);
+
+   // X axis
+  g.append('g')
+    .attr('class', 'x-axis')
+    .attr('transform', `translate(0,${h})`)
+    .call(d3.axisBottom(x))
+    .selectAll('text')
+    .attr('fill', '#e5e7eb')
+    .attr('font-size', '1rem')
+    .attr('transform', 'rotate(-25)')
+    .style('text-anchor', 'end');
+  // Y axis
+  g.append('g')
+    .attr('class', 'y-axis')
+    .call(d3.axisLeft(y).ticks(6))
+    .selectAll('text')
+    .attr('fill', '#e5e7eb')
+    .attr('font-size', '1rem');
+
+     // Bars
+  g.selectAll('.bar')
+    .data(agg)
+    .enter()
+    .append('rect')
+    .attr('class', 'bar')
+    .attr('x', d => x(d.Module))
+    .attr('y', d => y(linesKey ? d[linesKey] : 0))
+    .attr('width', x.bandwidth())
+    .attr('height', d => h - y(linesKey ? d[linesKey] : 0))
+    .attr('fill', d => severityColor(d.Severity));
+
+     // Value labels
+  g.selectAll('.label')
+    .data(agg)
+    .enter()
+    .append('text')
+    .attr('x', d => x(d.Module) + x.bandwidth() / 2)
+    .attr('y', d => y(linesKey ? d[linesKey] : 0) - 6)
+    .attr('text-anchor', 'middle')
+    .attr('fill', '#e5e7eb')
+    .attr('font-size', '0.95rem')
+    .text(d => linesKey && d[linesKey] != null ? d[linesKey].toFixed(1) + '%' : '');
+  // Chart title
+  chart.append('text')
+    .attr('x', width / 2)
+    .attr('y', margin.top / 2)
+    .attr('text-anchor', 'middle')
+    .attr('fill', '#e5e7eb')
+    .attr('font-size', '1.3rem')
+    .text('Coverage (lines%) by Module');
+    
     } else if (chartType === 'severity') {
       if (!hasColumn('Severity')) { showError('CSV is missing the "Severity" column.'); return; }
       const counts = d3.rollup(data, v => v.length, d => d.Severity || d.severity);
