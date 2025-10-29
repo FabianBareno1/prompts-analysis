@@ -127,7 +127,23 @@ function renderBarChart(containerSelector, labels, values, title, xLabel, yLabel
     .selectAll('text')
     .attr('fill', '#e5e7eb')
     .attr('font-size', '0.95rem');
-  // Add bars with tooltips
+  // Add custom tooltip for bars
+  // Create tooltip div (once per chart)
+  let tooltip = d3.select('body').select('.bar-tooltip');
+  if (tooltip.empty()) {
+    tooltip = d3.select('body').append('div')
+      .attr('class', 'bar-tooltip')
+      .style('position', 'absolute')
+      .style('pointer-events', 'none')
+      .style('background', 'rgba(30,41,59,0.97)')
+      .style('color', '#e5e7eb')
+      .style('padding', '7px 13px')
+      .style('border-radius', '7px')
+      .style('font-size', '1rem')
+      .style('box-shadow', '0 2px 8px rgba(0,0,0,0.18)')
+      .style('z-index', '9999')
+      .style('display', 'none');
+  }
   g.selectAll('.bar')
     .data(labels.map((d, i) => ({ label: d, value: values[i] })))
     .enter()
@@ -138,8 +154,19 @@ function renderBarChart(containerSelector, labels, values, title, xLabel, yLabel
     .attr('width', x.bandwidth())
     .attr('height', d => h - y(d.value))
     .attr('fill', (d, i) => d3.schemeTableau10[i % 10])
-    .append('title')
-    .text(d => `${xLabel}: ${d.label}\n${yLabel}: ${d.value}`);
+    .on('mouseover', function(event, d) {
+      tooltip.style('display', 'block')
+        .html(`<b>${xLabel}:</b> ${d.label}<br><b>${yLabel}:</b> ${d.value}`);
+      d3.select(this).attr('opacity', 0.8);
+    })
+    .on('mousemove', function(event) {
+      tooltip.style('left', (event.pageX + 15) + 'px')
+        .style('top', (event.pageY - 28) + 'px');
+    })
+    .on('mouseout', function() {
+      tooltip.style('display', 'none');
+      d3.select(this).attr('opacity', 1);
+    });
   g.selectAll('.label')
     .data(labels.map((d, i) => ({ label: d, value: values[i] })))
     .enter()
