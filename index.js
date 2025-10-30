@@ -164,10 +164,25 @@ export function renderChart(data, type, chartType) {
   }
   function drawPieChart(labels, values, title) {
     const radius = Math.min(width, height) / 2 - 40;
-    const g = chart.append('g').attr('transform', `translate(${width / 2},${height / 2 + 20})`);
+    // Add extra vertical space below the title (e.g., 40px instead of 20)
+    const g = chart.append('g').attr('transform', `translate(${width / 2},${height / 2 + 40})`);
     const pie = d3.pie().value(d => d.value);
-    const dataPie = labels.map((d, i) => ({ label: d, value: values[i] }));
-    const arcs = pie(dataPie);
+    // Aggregate small portions into "Other"
+    const threshold = 2; // Define the threshold for small portions
+    const aggregatedData = labels.map((label, i) => ({ label, value: values[i] }));
+    const smallPortions = aggregatedData.filter(d => d.value <= threshold);
+    const otherValue = smallPortions.reduce((sum, d) => sum + d.value, 0);
+    const filteredData = aggregatedData.filter(d => d.value > threshold);
+
+    if (otherValue > 0) {
+        filteredData.push({ label: 'Other', value: otherValue });
+    }
+
+    const arcs = pie(filteredData);
+
+    const arcGenerator = d3.arc().innerRadius(radius * 0.45).outerRadius(radius);
+    const outerArc = d3.arc().innerRadius(radius * 0.65).outerRadius(radius * 0.85); // Reduced radius for better fit
+
     g.selectAll('path')
       .data(arcs)
       .enter()
@@ -180,11 +195,20 @@ export function renderChart(data, type, chartType) {
       .data(arcs)
       .enter()
       .append('text')
-      .attr('transform', d => `translate(${d3.arc().innerRadius(radius * 0.7).outerRadius(radius).centroid(d)})`)
-      .attr('text-anchor', 'middle')
+      .attr('transform', function(d) {
+        // Place label just outside the arc
+        const pos = d3.arc().innerRadius(radius * 1.05).outerRadius(radius * 1.15).centroid(d);
+        return `translate(${pos[0]},${pos[1]})`;
+      })
+      .attr('text-anchor', function(d) {
+        // Place anchor based on angle
+        const midAngle = (d.startAngle + d.endAngle) / 2;
+        return midAngle < Math.PI ? 'start' : 'end';
+      })
       .attr('fill', '#e5e7eb')
       .attr('font-size', '1rem')
-      .text(d => `${d.data.label}: ${d.data.value}`);
+      .attr('font-weight', 'bold')
+      .text(d => `${d.data.label}: ${d.data.value.toFixed(1)}%`);
     chart.append('text')
       .attr('x', width / 2)
       .attr('y', 30)
@@ -193,6 +217,7 @@ export function renderChart(data, type, chartType) {
       .attr('font-size', '1.3rem')
       .text(title);
   }
+
   // Helper functions for safe aggregation
   function aggregateByColumn(data, column, filterEmpty = false) {
     if (filterEmpty) {
@@ -259,10 +284,10 @@ export function renderChart(data, type, chartType) {
       if (!hasColumn('Severity')) { showError('CSV is missing the "Severity" column.'); return; }
       agg = aggregateByColumn(data, 'Severity');
       renderBarOrPie(agg, 'bar', 'Items per Severity', 'Severity', 'Count');
-    } else if (chartType === 'category') {
-      if (!hasColumn('Category')) { showError('CSV is missing the "Category" column.'); return; }
-      agg = aggregateByColumn(data, 'Category');
-      renderBarOrPie(agg, 'pie', 'Items per Category', '', '');
+    } else if (chartType === 'state') {
+      if (!hasColumn('Maintenance State')) { showError('CSV is missing the "Maintenance State" column.'); return; }
+      agg = aggregateByColumn(data, 'Maintenance State');
+      renderBarOrPie(agg, 'pie', 'Items per Maintenance State', '', '');
     }
   } else if (type === 'regression-risk') {
       // Show commit bar charts above heatmap ONLY in regression-risk
@@ -312,7 +337,7 @@ export function parseCSVFile(file, type, chartType) {
           else if (chartType === 'category') requiredCols = ['Category'];
           else requiredCols = ['Module'];
         } else if (type === 'security-posture') {
-          if (chartType === 'category') requiredCols = ['Category'];
+          if (chartType === 'state') requiredCols = ['Maintenance State'];
           else requiredCols = ['Severity'];
         } else if (type === 'regression-risk') {
           if (chartType === 'category') requiredCols = ['Category'];
@@ -445,7 +470,7 @@ export function updateChartTypeSelectorVisibility() {
     ],
     'security-posture': [
       { value: 'severity', label: 'Items per Severity' },
-      { value: 'category', label: 'Items per Category' }
+      { value: 'state', label: 'Items per Maintenance State (Pie)' }
     ]
   };
   Object.keys(window.chartTypeSelectors).forEach(type => {
