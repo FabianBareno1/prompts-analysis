@@ -325,6 +325,39 @@ export function renderChart(data, type, chartType) {
           if (chartArea) chartArea.appendChild(riskChart);
         }
         window.renderRiskBarChart('#risk-chart', riskData);
+        // Add explanation below the risk chart
+        let riskExplanation = document.getElementById('risk-explanation');
+        if (!riskExplanation) {
+          riskExplanation = document.createElement('div');
+          riskExplanation.id = 'risk-explanation';
+          riskExplanation.style.margin = '1.5rem 0 0 0';
+          riskExplanation.style.background = 'rgba(30,41,59,0.92)';
+          riskExplanation.style.border = '1px solid #334155';
+          riskExplanation.style.borderRadius = '12px';
+          riskExplanation.style.boxShadow = '0 2px 12px rgba(0,0,0,0.13)';
+          riskExplanation.style.padding = '1.3rem 2rem 1.1rem 2rem';
+          riskExplanation.style.color = '#e5e7eb';
+          riskExplanation.style.fontSize = '1.08rem';
+          riskExplanation.style.maxWidth = '700px';
+          riskExplanation.style.lineHeight = '1.7';
+          riskExplanation.style.fontFamily = 'Segoe UI, Arial, sans-serif';
+          riskExplanation.innerHTML = `
+            <div style="font-size:1.18rem;font-weight:600;margin-bottom:0.5em;letter-spacing:0.01em;">Module Risk Calculation</div>
+            <div style="margin-bottom:0.7em;">Each module's risk index is calculated as a weighted sum of three factors:</div>
+            <ul style="margin:0.5em 0 0 1.5em;">
+              <li><b>Bugs:</b> Number of bugs, weighted by severity <span style="color:#38bdf8">(Critical=3, High=2, Medium=1, Low=0.5)</span>, normalized using min-max scaling.</li>
+              <li><b>Churn:</b> Total code churn (lines changed), normalized using min-max scaling.</li>
+              <li><b>Coverage:</b> Average test coverage for the module, normalized and inverted <span style="color:#38bdf8">(higher coverage = lower risk)</span>.</li>
+            </ul>
+            <div style="margin:1.1em 0 0 0;">The final risk score formula is:</div>
+            <div style="background:#334155;border-radius:7px;padding:0.7em 1.1em;margin:0.7em 0 0.7em 0;font-family:monospace;font-size:1.05rem;">
+              risk = 0.4 × bugsNorm + 0.4 × churnNorm + 0.2 × coverageRisk<br>
+              coverageRisk = 1 - coverageNorm
+            </div>
+            <div style="margin-top:0.7em;">All values are scaled between 0 and 1.<br>If coverage data is missing, risk assumes worst case for coverage.</div>
+          `;
+          riskChart.parentNode.insertBefore(riskExplanation, riskChart.nextSibling);
+        }
       });
   } else {
     // For ALL other sections, always hide commit bar charts

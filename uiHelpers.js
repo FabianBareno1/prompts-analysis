@@ -261,8 +261,8 @@ export async function renderCommitsBarCharts() {
   // Render the charts
   const weekResp = await fetch('./files/details/commits_by_week.csv');
   const weekText = await weekResp.text();
-  const weekData = parseCSV(weekText).filter(d => d.weeks && d.commits);
-  const weekLabels = weekData.map(d => d.weeks);
+  const weekData = parseCSV(weekText).filter(d => d.week && d.commits);
+  const weekLabels = weekData.map(d => d.week);
   const weekValues = weekData.map(d => Number(d.commits));
   renderBarChart('#' + SELECTORS.weekBar, weekLabels, weekValues, 'Commits per Week', 'Week', 'Commits');
   const monthResp = await fetch('./files/details/commits_by_month.csv');
@@ -433,7 +433,7 @@ export function renderModuleHeatmap({ modules, months, churnMatrix }) {
   const height = (container.node().clientHeight || 400) - margin.top - margin.bottom;
   const cellWidth = width / months.length;
   const cellHeight = height / modules.length;
-  const colorScale = d3.scaleSequential(d3.interpolateReds)
+  const colorScale = d3.scaleOrdinal(d3.schemeReds[9])
     .domain([0, d3.max(churnMatrix.flat())]);
   const svg = container.append('svg')
     .attr('width', width + margin.left + margin.right)
