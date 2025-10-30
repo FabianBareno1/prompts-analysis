@@ -9,14 +9,13 @@ export function drawBarChart(chart, labels, values, width, height, colorScale, t
   // Improved mobile chart height and margin logic
   let margin;
   if (width < 500) {
-    height = Math.max(height, 220);
-    let extraBottom = labels.length > 12 ? 18 : 0;
-    let extraLeft = labels.some(l => l.length > 8) ? 10 : 0;
-    margin = { top: 18, right: 8, bottom: 60 + extraBottom, left: 28 + extraLeft };
+    height = Math.max(height, 400);
+    let extraBottom = labels.length > 12 ? 28 : 0;
+    margin = { top: 18, right: 10, bottom: 100 + extraBottom, left: 10 };
   } else if (width < 700) {
-    margin = { top: 28, right: 18, bottom: 38, left: 38 };
+    margin = { top: 28, right: 18, bottom: 150, left: 38 };
   } else {
-    margin = { top: 40, right: 30, bottom: 60, left: 60 };
+    margin = { top: 40, right: 30, bottom: 100, left: 60 };
   }
 
   chart.selectAll('svg').remove();
