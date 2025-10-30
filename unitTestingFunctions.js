@@ -1,15 +1,90 @@
+// --- Helper functions for code quality ---
+function getNumericColumns(row) {
+  return Object.keys(row).filter(k => k !== 'Module' && k !== 'module' && k !== 'Severity' && !isNaN(parseFloat(row[k])));
+}
+
+function averageColumn(rows, col) {
+  const vals = rows.map(r => parseFloat(r[col].replace(',', '.'))).filter(v => !isNaN(v));
+  return vals.length > 0 ? (vals.reduce((a, b) => a + b, 0) / vals.length) : null;
+}
+
+function getLinesKey(row) {
+  return Object.keys(row).find(k => k.trim().toLowerCase() === 'lines%' || k.trim().toLowerCase() === 'linespercent');
+}
+
+function calculateSeverity(avgLines) {
+  if (avgLines == null) return '';
+  if (avgLines < 30) return 'High';
+  if (avgLines <= 70) return 'Medium';
+  return 'Low';
+}
+
+function getShortModuleName(moduleName) {
+  return moduleName.split('(')[0].trim();
+}
+
+function disambiguateLabels(agg) {
+  const shortModuleCounts = agg.reduce((acc, d) => {
+    acc[d.shortModule] = (acc[d.shortModule] || 0) + 1;
+    return acc;
+  }, {});
+  return d => shortModuleCounts[d.shortModule] > 1 ? d.Module : d.shortModule;
+}
+
+function groupZeroCoverageModules(agg, linesKey) {
+  if (!linesKey) return agg;
+  const zeroModules = agg.filter(d => (d[linesKey] || 0) === 0);
+  const nonZeroAgg = agg.filter(d => (d[linesKey] || 0) !== 0);
+  if (zeroModules.length > 0) {
+    const count = zeroModules.reduce((a, b) => a + (b.Count || 0), 0);
+    const others = {
+      Module: 'Others',
+      shortModule: 'Others',
+      [linesKey]: 0,
+      Severity: 'High',
+      Count: count
+    };
+    nonZeroAgg.unshift(others);
+  }
+  return nonZeroAgg;
+}
+
+// Helper: aggregate modules and calculate severity and averages
+export function aggregateModulesWithSeverity(data) {  
+  const grouped = d3.group(data, d => d.Module || d.module);
+  return Array.from(grouped, ([Module, rows]) => {
+    const numericCols = getNumericColumns(rows[0]);
+    const averages = {};
+    numericCols.forEach(col => {
+      averages[col] = averageColumn(rows, col);
+    });
+    const linesCol = getLinesKey(rows[0]);
+    const avgLines = linesCol ? averageColumn(rows, linesCol) : null;
+    const severity = calculateSeverity(avgLines);
+    const shortModule = getShortModuleName(Module);
+    return {
+      Module,
+      shortModule,
+      ...averages,
+      Severity: severity,
+      Count: rows.length
+    };
+  });
+}
+
 // Pie chart: module contribution to total coverage (lines%)
 export function renderCoveragePieByModule(data, chart, width, height) {
   let agg = aggregateModulesWithSeverity(data);
-  // Use lines% as the module's coverage
-  const linesKey = agg.length > 0 ? Object.keys(agg[0]).find(k => k.trim().toLowerCase() === 'lines%' || k.trim().toLowerCase() === 'linespercent') : null;
-  if (linesKey) { agg = agg.sort((a, b) => (a[linesKey] || 0) - (b[linesKey] || 0)); }
+  const linesKey = agg.length > 0 ? getLinesKey(agg[0]) : null;
+  if (linesKey) agg = agg.sort((a, b) => (a[linesKey] || 0) - (b[linesKey] || 0));
+  agg = groupZeroCoverageModules(agg, linesKey);
+  const labelFn = disambiguateLabels(agg);
   // If no lines% column, fallback to count
   let values = agg.map(d => linesKey ? (d[linesKey] || 0) : d.Count);
   // Normalize so total is 100
   const total = values.reduce((a, b) => a + b, 0) || 1;
   values = values.map(v => v * 100 / total);
-  const labels = agg.map(d => d.shortModule);
+  const labels = agg.map(labelFn);
   // Color scale
   const colorScale = d3.scaleOrdinal(d3.schemeTableau10);
   const radius = Math.min(width, height) / 2 - 40;
@@ -54,38 +129,6 @@ export function renderCoveragePieByModule(data, chart, width, height) {
     .text('Module Contribution to Total Coverage');
 
   // (Removed horizontal line below the title)
-}
-// Helper: aggregate modules and calculate severity and averages
-export function aggregateModulesWithSeverity(data) {  
-  const grouped = d3.group(data, d => d.Module || d.module);
-  return Array.from(grouped, ([Module, rows]) => {
-    const numericCols = Object.keys(rows[0]).filter(k => k !== 'Module' && k !== 'module' && k !== 'Severity' && !isNaN(parseFloat(rows[0][k])));
-    const averages = {};
-    numericCols.forEach(col => {
-      const vals = rows.map(r => parseFloat(r[col].replace(',', '.'))).filter(v => !isNaN(v));
-      averages[col] = vals.length > 0 ? (vals.reduce((a, b) => a + b, 0) / vals.length) : null;
-    });
-    let severity = '';
-    const linesCol = Object.keys(rows[0]).find(k => k.trim().toLowerCase() === 'lines%' || k.trim().toLowerCase() === 'linespercent');
-    let avgLines = null;
-    if (linesCol) {
-      const vals = rows.map(r => parseFloat(r[linesCol].replace(',', '.'))).filter(v => !isNaN(v));
-      avgLines = vals.length > 0 ? (vals.reduce((a, b) => a + b, 0) / vals.length) : null;
-      if (avgLines !== null) {
-        if (avgLines < 30) severity = 'High';
-        else if (avgLines <= 70) severity = 'Medium';
-        else severity = 'Low';
-      }
-    }
-    const shortModule = Module.split('(')[0].trim();
-    return {
-      Module,
-      shortModule,
-      ...averages,
-      Severity: severity,
-      Count: rows.length
-    };
-  });
 }
 
 // Chart: Severity on X, count of modules on Y
@@ -156,53 +199,13 @@ export function renderSeverityByModuleChart(data, chart, width, height) {
     .attr('font-size', '1.3rem')
     .text('Modules per Severity');
 }
-  export function renderCoveragePerModule(data, chart, width, height) {    
-    // Group rows by module
-    const grouped = d3.group(data, d => d.Module || d.module);
-    let agg = Array.from(grouped, ([Module, rows]) => {
-      // Find numeric columns (excluding module and severity)
-      const numericCols = Object.keys(rows[0]).filter(k => k !== 'Module' && k !== 'module' && k !== 'Severity' && !isNaN(parseFloat(rows[0][k])));
-      const averages = {};
-      numericCols.forEach(col => {
-        const vals = rows.map(r => parseFloat(r[col].replace(',', '.'))).filter(v => !isNaN(v));
-        averages[col] = vals.length > 0 ? (vals.reduce((a, b) => a + b, 0) / vals.length) : null;
-      });
-      // Compute severity based on average lines%
-      let severity = '';
-      const linesCol = Object.keys(rows[0]).find(k => k.trim().toLowerCase() === 'lines%' || k.trim().toLowerCase() === 'linespercent');
-      let avgLines = null;
-      if (linesCol) {
-        const vals = rows.map(r => parseFloat(r[linesCol].replace(',', '.'))).filter(v => !isNaN(v));
-        avgLines = vals.length > 0 ? (vals.reduce((a, b) => a + b, 0) / vals.length) : null;
-        if (avgLines !== null) {
-          if (avgLines < 30) severity = 'High';
-          else if (avgLines <= 70) severity = 'Medium';
-          else severity = 'Low';
-        }
-      }
-      // Only show the part before the first '('
-      const shortModule = Module.split('(')[0].trim();
-      return {
-        Module,
-        shortModule,
-        ...averages,
-        Severity: severity,
-        Count: rows.length
-      };
-    });
 
-    // Sort by lines% ascending
-    const linesKey = agg.length > 0 ? Object.keys(agg[0]).find(k => k.trim().toLowerCase() === 'lines%' || k.trim().toLowerCase() === 'linespercent') : null;
-    if (linesKey) {
-      agg = agg.sort((a, b) => (a[linesKey] || 0) - (b[linesKey] || 0));
-    }
-    // Detectar duplicados de shortModule
-    const shortModuleCounts = agg.reduce((acc, d) => {
-      acc[d.shortModule] = (acc[d.shortModule] || 0) + 1;
-      return acc;
-    }, {});
-    // Si hay duplicados, usar nombre completo (incluyendo paréntesis) para esos módulos
-    const labelFn = d => shortModuleCounts[d.shortModule] > 1 ? d.Module : d.shortModule;
+export function renderCoveragePerModule(data, chart, width, height) {    
+    let agg = aggregateModulesWithSeverity(data);
+    const linesKey = agg.length > 0 ? getLinesKey(agg[0]) : null;
+    if (linesKey) agg = agg.sort((a, b) => (a[linesKey] || 0) - (b[linesKey] || 0));
+    agg = groupZeroCoverageModules(agg, linesKey);
+    const labelFn = disambiguateLabels(agg);
     // Color scale by severity
     const severityColor = severity => {
       if (severity === 'High') return '#ef4444'; // red
