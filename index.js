@@ -1,4 +1,8 @@
-import { renderCoveragePerModule, renderSeverityByModuleChart, renderCoveragePieByModule } from './unitTestingFunctions.js';
+import { renderUnitTestingChart } from './features/unitTesting.js';
+import { renderSecurityPostureChart } from './features/securityPosture.js';
+import { renderSemanticBugDetectionChart } from './features/semanticBugDetection.js';
+import { renderRegressionRiskSection } from './features/regressionRisk.js';
+
 // Show/hide summary and detail
 document.addEventListener('DOMContentLoaded', () => {
   const summaryBtn = document.getElementById('show-summary-btn');
@@ -20,8 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// D3 chart rendering and CSV parsing logic for the audit dashboard
-// All chart rendering, CSV parsing, and data aggregation functions
 
 
 // --- State and DOM references ---
@@ -99,179 +101,14 @@ export function renderChart(data, type, chartType) {
     return;
   }
   csvSummary.style.display = 'none';
-  const chartArea = document.getElementById('chart-area');
-  const width = chartArea ? chartArea.clientWidth - 40 : 600;
-  const height = chartArea ? chartArea.clientHeight - 60 : 400;
-  function hasColumn(col) {
-    return data.length > 0 && Object.keys(data[0]).some(k => k.trim().toLowerCase() === col.trim().toLowerCase());
-  }
-  // SVG responsive
-  chart
-    .attr('width', '100%')
-    .attr('height', '100%')
-    .attr('viewBox', `0 0 ${width} ${height}`)
-    .attr('preserveAspectRatio', 'xMidYMid meet');
-  const colorScale = d3.scaleOrdinal(d3.schemeTableau10);
-  function drawBarChart(labels, values, title, xLabel, yLabel) {
-    const margin = { top: 40, right: 30, bottom: 60, left: 60 };
-    const w = width - margin.left - margin.right;
-    const h = height - margin.top - margin.bottom;
-    const g = chart.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
-    const x = d3.scaleBand().domain(labels).range([0, w]).padding(0.2);
-    const y = d3.scaleLinear().domain([0, d3.max(values)]).nice().range([h, 0]);
-    g.append('g')
-      .attr('class', 'x-axis')
-      .attr('transform', `translate(0,${h})`)
-      .call(d3.axisBottom(x))
-      .selectAll('text')
-      .attr('fill', '#e5e7eb')
-      .attr('font-size', '1rem')
-      .attr('transform', 'rotate(-25)')
-      .style('text-anchor', 'end');
-    g.append('g')
-      .attr('class', 'y-axis')
-      .call(d3.axisLeft(y).ticks(6))
-      .selectAll('text')
-      .attr('fill', '#e5e7eb')
-      .attr('font-size', '1rem');
-    g.selectAll('.bar')
-      .data(labels.map((d, i) => ({ label: d, value: values[i] })))
-      .enter()
-      .append('rect')
-      .attr('class', 'bar')
-      .attr('x', d => x(d.label))
-      .attr('y', d => y(d.value))
-      .attr('width', x.bandwidth())
-      .attr('height', d => h - y(d.value))
-      .attr('fill', (d, i) => colorScale(i));
-    g.selectAll('.label')
-      .data(labels.map((d, i) => ({ label: d, value: values[i] })))
-      .enter()
-      .append('text')
-      .attr('x', d => x(d.label) + x.bandwidth() / 2)
-      .attr('y', d => y(d.value) - 6)
-      .attr('text-anchor', 'middle')
-      .attr('fill', '#e5e7eb')
-      .attr('font-size', '0.95rem')
-      .text(d => d.value);
-    chart.append('text')
-      .attr('x', width / 2)
-      .attr('y', margin.top / 2)
-      .attr('text-anchor', 'middle')
-      .attr('fill', '#e5e7eb')
-      .attr('font-size', '1.3rem')
-      .text(title);
-  }
-  function drawPieChart(labels, values, title) {
-    const radius = Math.min(width, height) / 2 - 40;
-    const g = chart.append('g').attr('transform', `translate(${width / 2},${height / 2 + 20})`);
-    const pie = d3.pie().value(d => d.value);
-    const dataPie = labels.map((d, i) => ({ label: d, value: values[i] }));
-    const arcs = pie(dataPie);
-    g.selectAll('path')
-      .data(arcs)
-      .enter()
-      .append('path')
-      .attr('d', d3.arc().innerRadius(radius * 0.45).outerRadius(radius))
-      .attr('fill', (d, i) => colorScale(i))
-      .attr('stroke', '#222')
-      .attr('stroke-width', 2);
-    g.selectAll('text')
-      .data(arcs)
-      .enter()
-      .append('text')
-      .attr('transform', d => `translate(${d3.arc().innerRadius(radius * 0.7).outerRadius(radius).centroid(d)})`)
-      .attr('text-anchor', 'middle')
-      .attr('fill', '#e5e7eb')
-      .attr('font-size', '1rem')
-      .text(d => `${d.data.label}: ${d.data.value}`);
-    chart.append('text')
-      .attr('x', width / 2)
-      .attr('y', 30)
-      .attr('text-anchor', 'middle')
-      .attr('fill', '#e5e7eb')
-      .attr('font-size', '1.3rem')
-      .text(title);
-  }
-  // Helper functions for safe aggregation
-  function aggregateByColumn(data, column, filterEmpty = false) {
-    if (filterEmpty) {
-      return Array.from(
-        d3.rollup(
-          data.filter(row => row[column] && row[column].trim() !== ''),
-          v => v.length,
-          d => d[column]
-        ),
-        ([key, count]) => ({ key, count })
-      );
-    } else {
-      return Array.from(
-        d3.rollup(
-          data,
-          v => v.length,
-          d => d[column] || d[column.toLowerCase()]
-        ),
-        ([key, count]) => ({ key, count })
-      );
-    }
-  }
-
-  function renderBarOrPie(agg, chartType, title, xLabel, yLabel) {
-    if (chartType === 'pie') {
-      drawPieChart(agg.map(d => d.key), agg.map(d => d.count), title);
-    } else {
-      drawBarChart(agg.map(d => d.key), agg.map(d => d.count), title, xLabel, yLabel);
-    }
-  }
-
-  let agg = [];
-  if (!chartType) {
-    const selector = window.chartTypeSelectors ? window.chartTypeSelectors[type] : null;
-    const firstOpt = selector ? selector.querySelector('option') : null;
-    chartType = firstOpt ? firstOpt.value : 'module';
-  }
   if (type === 'unit-testing') {
-    if (chartType === 'module') {
-      if (!hasColumn('Module')) { showError('CSV is missing the "Module" column.'); return; }
-      renderCoveragePerModule(data, chart, width, height);
-    } else if (chartType === 'severity') {
-      renderSeverityByModuleChart(data, chart, width, height);
-    } else if (chartType === 'pie') {
-      if (!hasColumn('Module')) { showError('CSV is missing the "Module" column.'); return; }
-      renderCoveragePieByModule(data, chart, width, height);
-    }
+    renderUnitTestingChart(data, chartType);
   } else if (type === 'semantic-bug-detection') {
-    if (chartType === 'module') {
-      if (!hasColumn('Module')) { showError('CSV is missing the "Module" column.'); return; }
-      agg = aggregateByColumn(data, 'Module', true);
-      renderBarOrPie(agg, 'bar', 'Issues per Module', 'Module', 'Count');
-    } else if (chartType === 'severity') {
-      if (!hasColumn('Severity')) { showError('CSV is missing the "Severity" column.'); return; }
-      agg = aggregateByColumn(data, 'Severity', true);
-      renderBarOrPie(agg, 'bar', 'Issues per Severity', 'Severity', 'Count');
-    } else if (chartType === 'category') {
-      if (!hasColumn('Category')) { showError('CSV is missing the "Category" column.'); return; }
-      agg = aggregateByColumn(data, 'Category', true);
-      renderBarOrPie(agg, 'pie', 'Issues per Category', '', '');
-    }
+    renderSemanticBugDetectionChart(data, chartType);
   } else if (type === 'security-posture') {
-    if (chartType === 'severity') {
-      if (!hasColumn('Severity')) { showError('CSV is missing the "Severity" column.'); return; }
-      agg = aggregateByColumn(data, 'Severity');
-      renderBarOrPie(agg, 'bar', 'Items per Severity', 'Severity', 'Count');
-    } else if (chartType === 'category') {
-      if (!hasColumn('Category')) { showError('CSV is missing the "Category" column.'); return; }
-      agg = aggregateByColumn(data, 'Category');
-      renderBarOrPie(agg, 'pie', 'Items per Category', '', '');
-    }
+    renderSecurityPostureChart(data, chartType);
   } else if (type === 'regression-risk') {
-      // Show commit bar charts above heatmap ONLY in regression-risk
-      if (typeof window.renderCommitsBarCharts === 'function') window.renderCommitsBarCharts();
-      // Always show heatmap
-      const heatmapContainer = document.getElementById('heatmap-container');
-      if (heatmapContainer) heatmapContainer.style.display = 'block';
-      // Hide main chart SVG to avoid empty space
-      chart.style('display', 'none');
+    renderRegressionRiskSection(data, chartType);
   } else {
     // For ALL other sections, always hide commit bar charts
     if (typeof window.hideCommitsBarCharts === 'function') window.hideCommitsBarCharts();
@@ -425,7 +262,45 @@ export function loadData(type, chartType) {
   renderChart(data, type, chartType || 'module');
 }
 
-// --- Chart type selector visibility logic ---
+
+// --- Responsive chart redraw on window resize and container resize ---
+let lastChartType = null;
+window.addEventListener('resize', () => {
+  const activeBtn = document.querySelector('nav button.active');
+  const type = activeBtn ? activeBtn.id : null;
+  if (!type || !sectionData[type] || sectionData[type].length === 0) return;
+  let chartType = null;
+  if (window.chartTypeSelectors && window.chartTypeSelectors[type]) {
+    chartType = window.chartTypeSelectors[type].value;
+  }
+  chartType = chartType || lastChartType || 'module';
+  lastChartType = chartType;
+  // Always re-render semantic-bug-detection and unit-testing charts on resize
+  if (type === 'semantic-bug-detection' || type === 'unit-testing') {
+    renderChart(sectionData[type], type, chartType);
+  } else {
+    renderChart(sectionData[type], type, chartType);
+  }
+});
+
+// ResizeObserver para el contenedor del gráfico
+document.addEventListener('DOMContentLoaded', () => {
+  const chartArea = document.getElementById('chart-area');
+  if (!chartArea) return;
+  const observer = new ResizeObserver(() => {
+    const activeBtn = document.querySelector('nav button.active');
+    const type = activeBtn ? activeBtn.id : null;
+    if (!type || !sectionData[type] || sectionData[type].length === 0) return;
+    let chartType = null;
+    if (window.chartTypeSelectors && window.chartTypeSelectors[type]) {
+      chartType = window.chartTypeSelectors[type].value;
+    }
+    chartType = chartType || lastChartType || 'module';
+    lastChartType = chartType;
+    renderChart(sectionData[type], type, chartType);
+  });
+  observer.observe(chartArea);
+});
 /**
  * Updates the visibility and options of the chart type selector based on the section and data.
  */
