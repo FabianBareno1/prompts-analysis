@@ -1,5 +1,13 @@
+// List of allowed modules (replace with your actual module names)
+const MODULES_FILTER = ['module1', 'module2', 'module3'];
+
+// Filter data by allowed modules
+export function filterByModules(data) {
+  return data.filter(d => MODULES_FILTER.includes(d.Module || d.module));
+}
 // Pie chart: module contribution to total coverage (lines%)
 export function renderCoveragePieByModule(data, chart, width, height) {
+  data = filterByModules(data);
   const agg = aggregateModulesWithSeverity(data);
   // Use lines% as the module's coverage
   const linesKey = agg.length > 0 ? Object.keys(agg[0]).find(k => k.trim().toLowerCase() === 'lines%' || k.trim().toLowerCase() === 'linespercent') : null;
@@ -56,6 +64,7 @@ export function renderCoveragePieByModule(data, chart, width, height) {
 }
 // Helper: aggregate modules and calculate severity and averages
 export function aggregateModulesWithSeverity(data) {
+  data = filterByModules(data);
   const grouped = d3.group(data, d => d.Module || d.module);
   return Array.from(grouped, ([Module, rows]) => {
     const numericCols = Object.keys(rows[0]).filter(k => k !== 'Module' && k !== 'module' && k !== 'Severity' && !isNaN(parseFloat(rows[0][k])));
@@ -89,6 +98,7 @@ export function aggregateModulesWithSeverity(data) {
 
 // Chart: Severity on X, count of modules on Y
 export function renderSeverityByModuleChart(data, chart, width, height) {
+  data = filterByModules(data);
   const agg = aggregateModulesWithSeverity(data);
   // Count modules per severity
   const severityCounts = d3.rollup(agg, v => v.length, d => d.Severity);
@@ -156,6 +166,7 @@ export function renderSeverityByModuleChart(data, chart, width, height) {
     .text('Modules per Severity');
 }
   export function renderCoveragePerModule(data, chart, width, height) {
+    data = filterByModules(data);
     // Group rows by module
     const grouped = d3.group(data, d => d.Module || d.module);
     let agg = Array.from(grouped, ([Module, rows]) => {
