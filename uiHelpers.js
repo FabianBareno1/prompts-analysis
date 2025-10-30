@@ -1,3 +1,13 @@
+/**
+ * Renders the heatmap for Regression Risk section.
+ */
+export function renderHeatmap() {
+  const heatmapContainer = document.getElementById(SELECTORS.heatmapContainer);
+  if (!heatmapContainer) return;
+  heatmapContainer.style.display = 'block';
+  heatmapContainer.innerHTML = '';
+  generateModuleHeatmapData().then(renderModuleHeatmap);
+}
 
 const SECTION_IDS = ['regression-risk', 'unit-testing', 'security-posture', 'semantic-bug-detection'];
 
@@ -43,7 +53,7 @@ export async function renderCommitsBarCharts() {
   weekBar.id = SELECTORS.weekBar;
   weekBar.style.width = '100%';
   weekBar.style.minWidth = '350px';
-  weekBar.style.height = '260px';
+  weekBar.style.height = '340px';
   weekBar.style.marginBottom = '2rem';
   container.appendChild(weekBar);
   // Month bar
@@ -51,7 +61,7 @@ export async function renderCommitsBarCharts() {
   monthBar.id = SELECTORS.monthBar;
   monthBar.style.width = '100%';
   monthBar.style.minWidth = '350px';
-  monthBar.style.height = '260px';
+  monthBar.style.height = '340px';
   container.appendChild(monthBar);
   // Insert the bar charts just before the heatmap
   const heatmap = document.getElementById(SELECTORS.heatmapContainer);
@@ -100,7 +110,7 @@ function renderBarChart(containerSelector, labels, values, title, xLabel, yLabel
   const container = d3.select(containerSelector);
   container.selectAll('*').remove();
   let width = container.node().clientWidth || 350;
-  const height = container.node().clientHeight || 260;
+  const height = container.node().clientHeight || 400;
   const margin = { top: 40, right: 30, bottom: 60, left: 60 };
   const w = width - margin.left - margin.right;
   const h = height - margin.top - margin.bottom;
@@ -110,8 +120,14 @@ function renderBarChart(containerSelector, labels, values, title, xLabel, yLabel
   const x = d3.scaleBand().domain(labels).range([0, w]).padding(0.2);
   const y = d3.scaleLinear().domain([0, d3.max(values)]).nice().range([h, 0]);
   const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
-  // Reduce x-axis label density: show only every 3rd label if crowded
-  const showLabelEvery = (labels.length > 20) ? 3 : 1;
+  // Reduce x-axis label density only if there are many bars
+  let showLabelEvery = 1;
+  const isMobile = width < 800;
+  if (isMobile) {
+    showLabelEvery = labels.length > 20 ? 5 : 1;
+  } else if (labels.length > 20) {
+    showLabelEvery = Math.ceil(labels.length / 20);
+  }
   g.append('g')
     .attr('class', 'x-axis')
     .attr('transform', `translate(0,${h})`)
@@ -232,15 +248,36 @@ export function renderModuleHeatmap({ modules, months, churnMatrix }) {
   container.selectAll('*').remove();
   const margin = { top: 40, right: 80, bottom: 40, left: 100 };
   const width = (container.node().clientWidth || 900) - margin.left - margin.right;
-  const height = (container.node().clientHeight || 400) - margin.top - margin.bottom;
+  const height = (container.node().clientHeight || 600) - margin.top - margin.bottom;
   const cellWidth = width / months.length;
   const cellHeight = height / modules.length;
   const colorScale = d3.scaleSequential(d3.interpolateReds)
     .domain([0, d3.max(churnMatrix.flat())]);
+  const totalWidth = width + margin.left + margin.right;
+  const totalHeight = height + margin.top + margin.bottom;
   const svg = container.append('svg')
-    .attr('width', width + margin.left + margin.right)
-    .attr('height', height + margin.top + margin.bottom);
+    .attr('width', '100%')
+    .attr('height', '100%')
+    .attr('viewBox', `0 0 ${totalWidth} ${totalHeight}`)
+    .attr('preserveAspectRatio', 'xMidYMid meet');
   const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+  // Tooltip visual
+  let tooltip = d3.select('body').select('.heatmap-tooltip');
+  if (tooltip.empty()) {
+    tooltip = d3.select('body').append('div')
+      .attr('class', 'heatmap-tooltip')
+      .style('position', 'absolute')
+      .style('pointer-events', 'none')
+      .style('background', 'rgba(30,41,59,0.97)')
+      .style('color', '#e5e7eb')
+      .style('padding', '7px 13px')
+      .style('border-radius', '7px')
+      .style('font-size', '1rem')
+      .style('box-shadow', '0 2px 8px rgba(0,0,0,0.18)')
+      .style('z-index', '9999')
+      .style('display', 'none');
+  }
+
   g.selectAll('g')
     .data(churnMatrix)
     .enter()
@@ -254,11 +291,28 @@ export function renderModuleHeatmap({ modules, months, churnMatrix }) {
     .attr('width', cellWidth)
     .attr('height', cellHeight)
     .attr('fill', d => colorScale(d.churn))
-    .append('title')
-    .text(d => `Module: ${d.module}\nMonth: ${d.month}\nChurn: ${d.churn}`);
+    .on('mouseover', function(event, d) {
+      tooltip.style('display', 'block')
+        .html(`<b>Module:</b> ${d.module}<br><b>Month:</b> ${d.month}<br><b>Churn:</b> ${d.churn}`);
+      d3.select(this).attr('stroke', '#fff').attr('stroke-width', 2);
+    })
+    .on('mousemove', function(event) {
+      tooltip.style('left', (event.pageX + 15) + 'px')
+        .style('top', (event.pageY - 28) + 'px');
+    })
+    .on('mouseout', function() {
+      tooltip.style('display', 'none');
+      d3.select(this).attr('stroke', null).attr('stroke-width', null);
+    });
+  let showMonthLabelEvery = 1;
+  const isMobile = (container.node().clientWidth || 900) < 800;
+  if (isMobile) {
+    showMonthLabelEvery = 3;
+  }
   svg.append('g')
     .attr('transform', `translate(${margin.left},${height + margin.top})`)
-    .call(d3.axisBottom(d3.scaleBand().domain(months).range([0, width])))
+    .call(d3.axisBottom(d3.scaleBand().domain(months).range([0, width])
+      ).tickFormat((d, i) => (i % showMonthLabelEvery === 0 ? d : '')))
     .selectAll('text')
     .style('font-size', '10px')
     .attr('transform', 'rotate(-45)')
@@ -337,17 +391,6 @@ export function updateDashboardUI(sectionId) {
   } else {
     if (mainChart) mainChart.style.display = '';
   }
-}
-
-/**
- * Renders the heatmap for Regression Risk section.
- */
-export function renderHeatmap() {
-  const heatmapContainer = document.getElementById(SELECTORS.heatmapContainer);
-  if (!heatmapContainer) return;
-  heatmapContainer.style.display = 'block';
-  heatmapContainer.innerHTML = '';
-  generateModuleHeatmapData().then(renderModuleHeatmap);
 }
 
 /**
