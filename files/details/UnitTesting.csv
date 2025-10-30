@@ -21,6 +21,9 @@ about (src/app/modules/general/about),src/app/modules/general/about/about.compon
 app (src/app),src/app/app.component.ts,100,0,100,100,Low
 app (src/app),src/app/modules/general/home/home.component.ts,100,0,100,100,Low
 app (src/app),src/app/modules/general/not-found/not-found.component.ts,100,0,100,100,Low
+app (src/app1),src/app/app.component.ts,50,0,100,100,Low
+app (src/app1),src/app/modules/general/home/home.component.ts,20,0,100,100,Low
+app (src/app1),src/app/modules/general/not-found/not-found.component.ts,100,0,100,100,Low
 chartjs (src/app/modules/application/chartjs),src/app/modules/application/chartjs/chartjs.component.ts,100,0,100,100,Low
 contact (src/app/modules/general/contact),src/app/modules/general/contact/contact.component.ts,100,0,100,100,Low
 items (src/app/modules/application/items),src/app/modules/application/items/items.service.ts,100,0,100,100,Low

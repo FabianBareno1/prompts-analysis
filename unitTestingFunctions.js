@@ -196,6 +196,13 @@ export function renderSeverityByModuleChart(data, chart, width, height) {
     if (linesKey) {
       agg = agg.sort((a, b) => (a[linesKey] || 0) - (b[linesKey] || 0));
     }
+    // Detectar duplicados de shortModule
+    const shortModuleCounts = agg.reduce((acc, d) => {
+      acc[d.shortModule] = (acc[d.shortModule] || 0) + 1;
+      return acc;
+    }, {});
+    // Si hay duplicados, usar nombre completo (incluyendo paréntesis) para esos módulos
+    const labelFn = d => shortModuleCounts[d.shortModule] > 1 ? d.Module : d.shortModule;
     // Color scale by severity
     const severityColor = severity => {
       if (severity === 'High') return '#ef4444'; // red
@@ -208,7 +215,7 @@ export function renderSeverityByModuleChart(data, chart, width, height) {
     const w = width - margin.left - margin.right;
     const h = height - margin.top - margin.bottom;
     const g = chart.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
-    const x = d3.scaleBand().domain(agg.map(d => d.shortModule)).range([0, w]).padding(0.2);
+    const x = d3.scaleBand().domain(agg.map(labelFn)).range([0, w]).padding(0.2);
     const y = d3.scaleLinear().domain([0, 100]).nice().range([h, 0]);
 
     // X axis
@@ -235,7 +242,7 @@ export function renderSeverityByModuleChart(data, chart, width, height) {
       .enter()
       .append('rect')
       .attr('class', 'bar')
-      .attr('x', d => x(d.shortModule))
+      .attr('x', d => x(labelFn(d)))
       .attr('y', d => y(linesKey ? d[linesKey] : 0))
       .attr('width', x.bandwidth())
       .attr('height', d => h - y(linesKey ? d[linesKey] : 0))
@@ -246,7 +253,7 @@ export function renderSeverityByModuleChart(data, chart, width, height) {
       .data(agg)
       .enter()
       .append('text')
-      .attr('x', d => x(d.shortModule) + x.bandwidth() / 2)
+      .attr('x', d => x(labelFn(d)) + x.bandwidth() / 2)
       .attr('y', d => y(linesKey ? d[linesKey] : 0) - 6)
       .attr('text-anchor', 'middle')
       .attr('fill', '#e5e7eb')
