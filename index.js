@@ -1,3 +1,8 @@
+// Oculta el div de explicacion de riesgo cuando se cambia de sección
+export function hideRiskExplanation() {
+  const riskExplanation = document.getElementById('risk-explanation');
+  if (riskExplanation) riskExplanation.style.display = 'none';
+}
 // Show/hide summary and detail
 document.addEventListener('DOMContentLoaded', () => {
   const summaryBtn = document.getElementById('show-summary-btn');
@@ -79,6 +84,8 @@ export function updateSummaryMarkdown(type) {
     summaryMd.style.display = mdPath ? 'block' : 'none';
     const summaryContainer = document.getElementById('summary-md-container');
     if (summaryContainer) summaryContainer.style.display = mdPath ? 'block' : 'none';
+    // Oculta la explicación de riesgo si no es regression-risk
+    hideRiskExplanation();
   }
 }
 
@@ -341,7 +348,9 @@ export function renderChart(data, type, chartType) {
           riskExplanation.style.maxWidth = '700px';
           riskExplanation.style.lineHeight = '1.7';
           riskExplanation.style.fontFamily = 'Segoe UI, Arial, sans-serif';
-          riskExplanation.innerHTML = `
+          riskChart.parentNode.insertBefore(riskExplanation, riskChart.nextSibling);
+        }
+        riskExplanation.innerHTML = `
             <div style="font-size:1.18rem;font-weight:600;margin-bottom:0.5em;letter-spacing:0.01em;">Module Risk Calculation</div>
             <div style="margin-bottom:0.7em;">Each module's risk index is calculated as a weighted sum of three factors:</div>
             <ul style="margin:0.5em 0 0 1.5em;">
@@ -356,8 +365,7 @@ export function renderChart(data, type, chartType) {
             </div>
             <div style="margin-top:0.7em;">All values are scaled between 0 and 1.<br>If coverage data is missing, risk assumes worst case for coverage.</div>
           `;
-          riskChart.parentNode.insertBefore(riskExplanation, riskChart.nextSibling);
-        }
+        riskExplanation.style.display = 'block';
       });
   } else {
     // For ALL other sections, always hide commit bar charts
