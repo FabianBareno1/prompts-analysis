@@ -1,3 +1,4 @@
+import { renderCoveragePerModule, renderSeverityByModuleChart, renderCoveragePieByModule } from './unitTestingFunctions.js';
 // Show/hide summary and detail
 document.addEventListener('DOMContentLoaded', () => {
   const summaryBtn = document.getElementById('show-summary-btn');
@@ -232,16 +233,12 @@ export function renderChart(data, type, chartType) {
   if (type === 'unit-testing') {
     if (chartType === 'module') {
       if (!hasColumn('Module')) { showError('CSV is missing the "Module" column.'); return; }
-      agg = aggregateByColumn(data, 'Module');
-      renderBarOrPie(agg, 'bar', 'Tests per Module', 'Module', 'Count');
+      renderCoveragePerModule(data, chart, width, height);
     } else if (chartType === 'severity') {
-      if (!hasColumn('Severity')) { showError('CSV is missing the "Severity" column.'); return; }
-      agg = aggregateByColumn(data, 'Severity');
-      renderBarOrPie(agg, 'bar', 'Tests per Severity', 'Severity', 'Count');
+      renderSeverityByModuleChart(data, chart, width, height);
     } else if (chartType === 'pie') {
       if (!hasColumn('Module')) { showError('CSV is missing the "Module" column.'); return; }
-      agg = aggregateByColumn(data, 'Module');
-      renderBarOrPie(agg, 'pie', 'Tests Distribution (Pie)', '', '');
+      renderCoveragePieByModule(data, chart, width, height);
     }
   } else if (type === 'semantic-bug-detection') {
     if (chartType === 'module') {
@@ -279,6 +276,7 @@ export function renderChart(data, type, chartType) {
     // For ALL other sections, always hide commit bar charts
     if (typeof window.hideCommitsBarCharts === 'function') window.hideCommitsBarCharts();
   }
+
 }
 
 /**
@@ -436,9 +434,9 @@ export function updateChartTypeSelectorVisibility() {
   const activeType = activeBtn ? activeBtn.id : null;
   const chartOptions = {
     'unit-testing': [
-      { value: 'module', label: 'Tests per Module' },
-      { value: 'severity', label: 'Tests per Severity' },
-      { value: 'pie', label: 'Tests Distribution (Pie)' }
+      { value: 'module', label: 'Coverage per Module' },
+      { value: 'severity', label: 'Modules per Severity' },
+      { value: 'pie', label: 'Test Coverage Distribution (Pie)' }
     ],
     'semantic-bug-detection': [
       { value: 'module', label: 'Issues per Module' },
