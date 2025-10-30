@@ -275,6 +275,57 @@ export function renderChart(data, type, chartType) {
       if (heatmapContainer) heatmapContainer.style.display = 'block';
       // Hide main chart SVG to avoid empty space
       chart.style('display', 'none');
+      // Render risk bar chart after heatmap using aggregation and risk calculation
+      Promise.all([
+        fetch('./files/details/dir_month_churn.csv').then(r => r.text()),
+        fetch('./files/details/SEMANTIC_BUG_REPORT.csv').then(r => r.text()),
+        fetch('./files/details/UnitTesting.csv').then(r => r.text())
+      ]).then(([churnText, bugText, covText]) => {
+        const dir_month_churn = d3.csvParse(churnText);
+        const SemanticBugReport = d3.csvParse(bugText);
+        const UnitTesting = d3.csvParse(covText);
+
+        // Churn aggregation
+        const churnAgg = aggregateByColumn(dir_month_churn, 'Module').map(row => {
+          const churnSum = dir_month_churn.filter(d => (d.Module || d.module) === row.key)
+            .reduce((acc, d) => acc + (Number(d.Churn || d.churn) || 0), 0);
+          return { module: row.key, churn: churnSum };
+        });
+        // Bugs aggregation (weighted by severity)
+        const bugSeverityWeights = { Critical: 3, High: 2, Medium: 1, Low: 0.5 };
+        const bugsAgg = aggregateByColumn(SemanticBugReport, 'Module', true).map(row => {
+          const bugs = SemanticBugReport.filter(d => (d.Module || d.module) === row.key)
+            .reduce((acc, d) => {
+              const sev = d.Severity || d.severity;
+              const w = bugSeverityWeights[sev] || 1;
+              return acc + w;
+            }, 0);
+          return { module: row.key, bugs };
+        });
+        // Coverage aggregation (average per module)
+        const coverageAgg = aggregateByColumn(UnitTesting, 'Module', true).map(row => {
+          const covVals = UnitTesting.filter(d => (d.Module || d.module) === row.key)
+            .map(d => Number(d.Coverage || d.coverage) || 0);
+          const avgCov = covVals.length ? covVals.reduce((a, b) => a + b, 0) / covVals.length : 0;
+          return { module: row.key, coverage: avgCov };
+        });
+
+        // Calculate risk
+        const riskData = window.computeModuleRisk({ churnAgg, bugsAgg, coverageAgg });
+
+        // Render risk chart
+        let riskChart = document.getElementById('risk-chart');
+        const chartArea = document.getElementById('chart-area');
+        if (!riskChart) {
+          riskChart = document.createElement('div');
+          riskChart.id = 'risk-chart';
+          riskChart.style.width = '100%';
+          riskChart.style.height = '320px';
+          riskChart.style.margin = '2rem 0 0 0';
+          if (chartArea) chartArea.appendChild(riskChart);
+        }
+        window.renderRiskBarChart('#risk-chart', riskData);
+      });
   } else {
     // For ALL other sections, always hide commit bar charts
     if (typeof window.hideCommitsBarCharts === 'function') window.hideCommitsBarCharts();

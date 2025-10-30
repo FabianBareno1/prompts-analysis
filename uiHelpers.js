@@ -1,3 +1,200 @@
+// Expose risk chart rendering and risk calculation globally for consistency
+window.renderModuleRiskChart = renderModuleRiskChart;
+window.computeModuleRisk = computeModuleRisk;
+window.renderRiskBarChart = renderRiskBarChart;
+/**
+/**
+ * Computes module risk index combining churn, bugs, and test coverage.
+ * Uses min-max normalization and configurable weights.
+ * @param {Object} params - { churnAgg, bugsAgg, coverageAgg }
+ * @param {Object} [options] - Optional config: weights
+ * @returns {Array<{ module: string, risk: number, bugs: number, churn: number, coverage: number, bugsNorm: number, churnNorm: number, coverageRisk: number }>} Risk data per module
+ */
+export function computeModuleRisk({ churnAgg, bugsAgg, coverageAgg }, options = {}) {
+  const weights = Object.assign({ bugs: 0.4, churn: 0.4, coverage: 0.2 }, options.weights || {});
+  // Defensive: default to empty arrays if undefined
+  churnAgg = Array.isArray(churnAgg) ? churnAgg : [];
+  bugsAgg = Array.isArray(bugsAgg) ? bugsAgg : [];
+  coverageAgg = Array.isArray(coverageAgg) ? coverageAgg : [];
+  // Collect all modules
+  const allModules = Array.from(new Set([
+    ...churnAgg.map(d => d.module),
+    ...bugsAgg.map(d => d.module),
+    ...coverageAgg.map(d => d.module)
+  ]));
+  // Build lookup maps
+  const churnMap = Object.fromEntries(churnAgg.map(d => [d.module, d.churn]));
+  const bugsMap = Object.fromEntries(bugsAgg.map(d => [d.module, d.bugs]));
+  const coverageMap = Object.fromEntries(coverageAgg.map(d => [d.module, d.coverage]));
+  // Min-max normalization
+  const churnVals = churnAgg.map(d => d.churn);
+  const bugsVals = bugsAgg.map(d => d.bugs);
+  const covVals = coverageAgg.map(d => d.coverage);
+  const churnMin = Math.min(...churnVals, 0), churnMax = Math.max(...churnVals, 1);
+  const bugsMin = Math.min(...bugsVals, 0), bugsMax = Math.max(...bugsVals, 1);
+  // For coverage, invert: coverageRisk = 1 - norm
+  const covMin = Math.min(...covVals, 0), covMax = Math.max(...covVals, 1);
+  // Compose risk data
+  return allModules.map(module => {
+    const churn = churnMap[module] || 0;
+    const bugs = bugsMap[module] || 0;
+    const coverage = coverageMap[module];
+    // Normalize
+    const churnNorm = (churnMax > churnMin) ? (churn - churnMin) / (churnMax - churnMin) : 0;
+    const bugsNorm = (bugsMax > bugsMin) ? (bugs - bugsMin) / (bugsMax - bugsMin) : 0;
+    let coverageNorm = (coverage !== undefined && covMax > covMin) ? (coverage - covMin) / (covMax - covMin) : undefined;
+    // Invert coverage: higher coverage = lower risk
+    let coverageRisk = (coverageNorm !== undefined) ? (1 - coverageNorm) : 1;
+    // If no coverage data, assume worst case
+    if (coverage === undefined) coverageRisk = 1;
+    // Compute risk
+    const risk = weights.bugs * bugsNorm + weights.churn * churnNorm + weights.coverage * coverageRisk;
+    return {
+      module,
+      risk: Math.max(0, Math.min(1, risk)),
+      bugs,
+      churn,
+      coverage: coverage !== undefined ? coverage : null,
+      bugsNorm,
+      churnNorm,
+      coverageRisk
+    };
+  });
+}
+
+/**
+ * Renders a risk bar chart for modules using D3.
+ * @param {string} selector - CSS selector for chart container
+ * @param {Array} riskData - Output of computeModuleRisk
+ */
+export function renderRiskBarChart(selector, riskData) {
+  const container = d3.select(selector);
+  container.selectAll('*').remove();
+  if (!riskData || riskData.length === 0) {
+    console.log('[renderRiskBarChart] riskData is empty or undefined:', riskData);
+    return;
+  }
+  // Sort modules by risk descending
+  const sorted = [...riskData].sort((a, b) => b.risk - a.risk);
+  const labels = sorted.map(d => d.module);
+  const values = sorted.map(d => d.risk);
+  const width = container.node().clientWidth || 700;
+  const height = container.node().clientHeight || 320;
+  const margin = { top: 40, right: 30, bottom: 60, left: 60 };
+  const w = width - margin.left - margin.right;
+  const h = height - margin.top - margin.bottom;
+  const svg = container.append('svg')
+    .attr('width', width)
+    .attr('height', height);
+  const x = d3.scaleBand().domain(labels).range([0, w]).padding(0.2);
+  const y = d3.scaleLinear().domain([0, 1]).range([h, 0]);
+  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+  // X axis
+  g.append('g')
+    .attr('class', 'x-axis')
+    .attr('transform', `translate(0,${h})`)
+    .call(d3.axisBottom(x))
+    .selectAll('text')
+    .attr('fill', '#e5e7eb')
+    .attr('font-size', '0.95rem')
+    .attr('transform', 'rotate(-25)')
+    .style('text-anchor', 'end');
+  // Y axis
+  g.append('g')
+    .attr('class', 'y-axis')
+    .call(d3.axisLeft(y).ticks(6))
+    .selectAll('text')
+    .attr('fill', '#e5e7eb')
+    .attr('font-size', '0.95rem');
+  // Tooltip
+  let tooltip = d3.select('body').select('.risk-bar-tooltip');
+  if (tooltip.empty()) {
+    tooltip = d3.select('body').append('div')
+      .attr('class', 'risk-bar-tooltip')
+      .style('position', 'absolute')
+      .style('pointer-events', 'none')
+      .style('background', 'rgba(30,41,59,0.97)')
+      .style('color', '#e5e7eb')
+      .style('padding', '7px 13px')
+      .style('border-radius', '7px')
+      .style('font-size', '1rem')
+      .style('box-shadow', '0 2px 8px rgba(0,0,0,0.18)')
+      .style('z-index', '9999')
+      .style('display', 'none');
+  }
+  g.selectAll('.bar')
+    .data(sorted)
+    .enter()
+    .append('rect')
+    .attr('class', 'bar')
+    .attr('x', d => x(d.module))
+    .attr('y', d => y(d.risk))
+    .attr('width', x.bandwidth())
+    .attr('height', d => h - y(d.risk))
+    .attr('fill', (d, i) => d3.schemeTableau10[i % 10])
+    .on('mouseover', function(event, d) {
+      tooltip.style('display', 'block')
+        .html(`<b>Module:</b> ${d.module}<br><b>Risk:</b> ${(d.risk*100).toFixed(2)}%<br><b>Bugs:</b> ${d.bugs}<br><b>Churn:</b> ${d.churn}<br><b>Coverage:</b> ${d.coverage !== null ? d.coverage.toFixed(1) + '%' : 'N/A'}`);
+      d3.select(this).attr('opacity', 0.8);
+    })
+    .on('mousemove', function(event) {
+      tooltip.style('left', (event.pageX + 15) + 'px')
+        .style('top', (event.pageY - 28) + 'px');
+    })
+    .on('mouseout', function() {
+      tooltip.style('display', 'none');
+      d3.select(this).attr('opacity', 1);
+    });
+  g.selectAll('.label')
+    .data(sorted)
+    .enter()
+    .append('text')
+    .attr('x', d => x(d.module) + x.bandwidth() / 2)
+    .attr('y', d => y(d.risk) - 6)
+    .attr('text-anchor', 'middle')
+    .attr('fill', '#e5e7eb')
+    .attr('font-size', '0.9rem')
+    .text(d => (d.risk*100).toFixed(1));
+  svg.append('text')
+    .attr('x', width / 2)
+    .attr('y', margin.top / 2)
+    .attr('text-anchor', 'middle')
+    .attr('fill', '#e5e7eb')
+    .attr('font-size', '1.1rem')
+    .text('Module Risk Index');
+}
+/**
+ * Renders the risk chart after the heatmap for regression-risk section.
+ * Loads all required datasets from CSV files already present.
+ */
+export async function renderModuleRiskChart() {
+  // Load datasets
+  const [churnResp, bugResp, covResp] = await Promise.all([
+    fetch('./files/details/dir_month_churn.csv'),
+    fetch('./files/details/SEMANTIC_BUG_REPORT.csv'),
+    fetch('./files/details/UnitTesting.csv')
+  ]);
+  const [churnText, bugText, covText] = await Promise.all([
+    churnResp.text(), bugResp.text(), covResp.text()
+  ]);
+  const dir_month_churn = parseCSV(churnText);
+  const SemanticBugReport = parseCSV(bugText);
+  const UnitTesting = parseCSV(covText);
+  // Compute risk data
+  const riskData = computeModuleRisk({ dir_month_churn, SemanticBugReport, UnitTesting });
+  // Insert chart container after heatmap
+  const heatmap = document.getElementById(SELECTORS.chartArea);
+  let riskChart = document.getElementById(SELECTORS.riskChart);
+  if (!riskChart) {
+    riskChart = document.createElement('div');
+    riskChart.id = SELECTORS.riskChart;
+    riskChart.style.width = '100%';
+    riskChart.style.height = '320px';
+    riskChart.style.margin = '2rem 0 0 0';
+    heatmap.parentNode.insertBefore(riskChart, heatmap.nextSibling);
+  }
+  renderRiskBarChart('#' + SELECTORS.riskChart, riskData);
+}
 
 const SECTION_IDS = ['regression-risk', 'unit-testing', 'security-posture', 'semantic-bug-detection'];
 
@@ -9,6 +206,7 @@ const SELECTORS = {
   commitsBarCharts: 'commits-bar-charts',
   weekBar: 'commits-week-bar',
   monthBar: 'commits-month-bar',
+  riskChart: 'risk-chart',
 };
 
 /**
@@ -329,11 +527,15 @@ export function renderModuleHeatmap({ modules, months, churnMatrix }) {
 export function updateDashboardUI(sectionId) {
   hideCommitsBarCharts();
   hideHeatmap();
+  // Remove risk chart if present
+  const riskChart = document.getElementById('risk-chart');
+  if (riskChart && riskChart.parentNode) riskChart.parentNode.removeChild(riskChart);
   const mainChart = document.getElementById(SELECTORS.mainChart);
   if (sectionId === 'regression-risk') {
     if (mainChart) mainChart.style.display = 'none';
     renderCommitsBarCharts();
     renderHeatmap();
+    // Risk chart rendering is now handled in index.js renderChart
   } else {
     if (mainChart) mainChart.style.display = '';
   }
