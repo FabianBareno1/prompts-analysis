@@ -1,4 +1,4 @@
-import { renderCoveragePerModule, renderSeverityByModuleChart, renderCoveragePieByModule } from './unitTestingFunctions.js';
+import { renderCoveragePerModule, renderSeverityByModuleChart, renderCoverageLollipopByModule } from './unitTestingFunctions.js';
 // Show/hide summary and detail
 document.addEventListener('DOMContentLoaded', () => {
   const summaryBtn = document.getElementById('show-summary-btn');
@@ -236,9 +236,9 @@ export function renderChart(data, type, chartType) {
       renderCoveragePerModule(data, chart, width, height);
     } else if (chartType === 'severity') {
       renderSeverityByModuleChart(data, chart, width, height);
-    } else if (chartType === 'pie') {
+    } else if (chartType === 'lollipop') {
       if (!hasColumn('Module')) { showError('CSV is missing the "Module" column.'); return; }
-      renderCoveragePieByModule(data, chart, width, height);
+      renderCoverageLollipopByModule(data, chart, width, height);
     }
   } else if (type === 'semantic-bug-detection') {
     if (chartType === 'module') {
@@ -436,7 +436,7 @@ export function updateChartTypeSelectorVisibility() {
     'unit-testing': [
       { value: 'module', label: 'Coverage per Module' },
       { value: 'severity', label: 'Modules per Severity' },
-      { value: 'pie', label: 'Test Coverage Distribution (Pie)' }
+      { value: 'lollipop', label: 'Test Coverage Distribution (Lollipop)' }
     ],
     'semantic-bug-detection': [
       { value: 'module', label: 'Issues per Module' },
