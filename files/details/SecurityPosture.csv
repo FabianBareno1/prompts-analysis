@@ -1,11 +1,100 @@
-Module,Category,Subcategory,FilePath,Line,Column,Severity,Description,SuggestedFix
-orders,Authentication,Weak Password,src/app/orders/order.service.ts,40,6,High,Password policy not enforced,Implement strong password policy
-users,Authorization,Privilege Escalation,src/app/users/user.service.ts,22,3,Critical,Role checks missing,Add role-based access control
-products,Input Validation,Missing Validation,src/app/products/product.service.ts,15,2,Medium,No input validation,Add input validation
-payments,Encryption,Weak Encryption,src/app/payments/payment.service.ts,88,12,High,Outdated encryption algorithm,Update to AES-256
-inventory,Logging,Excessive Logging,src/app/inventory/inventory.service.ts,60,8,Medium,Too many logs,Reduce log verbosity
-shipping,Session Management,Session Timeout,src/app/shipping/shipping.service.ts,77,9,High,Session does not expire,Implement session timeout
-orders,Error Handling,Uncaught Exception,src/app/orders/order.api.ts,33,4,Medium,Exception not handled,Add try-catch block
-users,Configuration,Default Password,src/app/users/user.component.ts,19,2,High,Default password set,Force password change
-products,Monitoring,No Health Check,src/app/products/product.service.ts,25,7,Medium,No health check endpoint,Add health check
-payments,Encryption,No Encryption,src/app/payments/payment.service.ts,99,10,Critical,Data sent in plain text,Encrypt data in transit
+#,Library Name,Declared Version,Locked Version,Recommended Version,Library Repo,Maintenance State,Known Issues,CVE Reference,Severity,Risks,Recommendation
+1,lodash,^4.17.11,4.17.15,4.17.21 (Angular 9 compatible),https://github.com/lodash/lodash,Active,Prototype pollution," ""CVE-2020-8203|CVE-2019-10744|CVE-2021-23337|CVE-2021-23368""",High,Data integrity,Pin to >=4.17.21; audit transitive deps
+2,jquery,^3.3.1,3.3.1,3.5.1,https://github.com/jquery/jquery,Maintenance,Regex / HTML injection,CVE-2020-11022|CVE-2020-11023,High,XSS via crafted HTML attributes,Upgrade to >=3.5.1 or remove
+3,axios,0.21.1,0.21.1,0.21.4,https://github.com/axios/axios,Active,Open redirect / SSRF,CVE-2021-3749,Medium,SSRF risk,Upgrade to >=0.21.4; validate URL inputs
+4,moment,^2.24.0,2.24.x,2.29.4,https://github.com/moment/moment,Legacy,Regex ReDoS,CVE-2022-31129,Medium,Performance DoS,Upgrade or migrate to Luxon/Day.js
+5,moment-timezone,^0.5.21,0.5.21,0.5.43,https://github.com/moment/moment-timezone,Legacy,Outdated timezone DB,,Low,Incorrect time calc,Update to latest 0.5.x
+6,ajv,6.12.6,6.12.6,6.12.6,https://github.com/ajv-validator/ajv,Legacy major,Earlier v6 ReDoS,CVE-2020-15366,Low,Schema validation performance,Migrate to Ajv v8 when possible
+7,node-sass (optional),5,5.x,Replace with sass,https://github.com/sass/node-sass,Deprecated,Unmaintained binding,GHSA-7gc6-8v5p-wjpj,Medium,Supply chain risk,Migrate to dart-sass
+8,protractor,^5.4.4,5.4.4,Replace (Cypress/Playwright),https://github.com/angular/protractor,Deprecated,Project sunset,https://github.com/angular/protractor/issues/5502,Medium,Unsupported tooling,Migrate e2e tests
+9,tslint,~6.1.0,6.1.x,Migrate to ESLint,https://github.com/palantir/tslint,Deprecated,End of life,https://github.com/palantir/tslint/issues/4534,Medium,Stagnant rules,Move to angular-eslint
+10,@angular/core,~9.1.13,9.1.13,9.1.13,https://github.com/angular/angular,EOL,Unpatched future issues,,Medium,Lack of security patches,Upgrade Angular major
+11,@angular/common,~9.1.13,9.1.13,9.1.13,https://github.com/angular/angular,EOL,Same as core,,Medium,Unpatched issues,Upgrade Angular major
+12,@angular/router,~9.1.13,9.1.13,9.1.13,https://github.com/angular/angular,EOL,Potential XSS improvements,,Medium,Route-based XSS risk,Upgrade Angular major
+13,@angular/compiler,~9.1.13,9.1.13,9.1.13,https://github.com/angular/angular,EOL,Security hardening later,,Medium,Template sanitization gaps,Upgrade Angular major
+14,@angular/platform-browser,~9.1.13,9.1.13,9.1.13,https://github.com/angular/angular,EOL,Browser security updates,,Medium,DOM sanitization gaps,Upgrade Angular major
+15,@angular/animations,~9.1.13,9.1.13,9.1.13,https://github.com/angular/angular,EOL,No active patching,,Low,Minor risk surface,Upgrade with core
+16,@angular/forms,~9.1.13,9.1.13,9.1.13,https://github.com/angular/angular,EOL,Validation improvements later,,Low,Validation risk,Upgrade with core
+17,@angular/elements,~9.1.13,9.1.13,9.1.13,https://github.com/angular/angular,EOL,Integration evolves,,Low,Web component stability,Upgrade with core
+18,@angular/material,~9.2.4,9.2.4,9.2.4,https://github.com/angular/components,EOL (v9),A11y fixes later,,Medium,A11y security,Upgrade Material with framework
+19,@angular/cdk,~9.2.4,9.2.4,9.2.4,https://github.com/angular/components,EOL (v9),Same as Material,,Medium,Focus management risks,Upgrade with framework
+20,@angular/material-moment-adapter,~9.2.4,9.2.4,9.2.4,https://github.com/angular/components,EOL,Tied to Material,,Low,Date parsing issues,Upgrade with framework
+21,@angular/cdk-experimental,~9.2.4,9.2.4,Replace or upgrade,https://github.com/angular/components,Experimental,Less hardened,,Low,Unstable APIs,Remove experimental usage
+22,@angular/platform-browser-dynamic,~9.1.13,9.1.13,9.1.13,https://github.com/angular/angular,EOL,JIT exposure,,Low,JIT surface,Prefer AOT & upgrade
+23,@angular/localize,~9.1.13,9.1.13,9.1.13,https://github.com/angular/angular,EOL,Pipeline updates later,,Low,i18n edge cases,Upgrade with framework
+24,@angular/flex-layout,^9.0.0-beta.29,9.0.0-beta.31,Replace approach,https://github.com/angular/flex-layout,Deprecated (Archived),Archived project,https://github.com/angular/flex-layout/issues/1220,Medium,Layout instability,Move to CSS/Grid/CDK
+25,zone.js,~0.10.2,0.10.2,0.11.x,https://github.com/angular/zone.js,Maintenance,Performance fixes later,,Low,Timing/leak edge cases,Upgrade with framework
+26,rxjs,~6.5.4,6.5.4,6.6.7,https://github.com/ReactiveX/rxjs,Maintenance (v6),Leak fixes later,,Low,Unsubscribed leak risk,Upgrade to >=6.6.7
+27,@auth0/angular-jwt,^2.1.0,2.1.2,5.x (later Angular),https://github.com/auth0/angular2-jwt,Active,Token handling issues,,Low,Token expiry races,Upgrade when feasible
+28,crypto-js,^3.1.9-1,3.1.9-1,4.2.0,https://github.com/brix/crypto-js,Active,Older algorithm issues,,Medium,Weak hashing,Upgrade or prefer Web Crypto
+29,uuid,8.2.0,8.2.0,8.3.2,https://github.com/uuidjs/uuid,Active,Fallback RNG concerns,,Low,RNG predictability,Upgrade minor
+30,@types/jquery,*,3.x,Latest,https://github.com/DefinitelyTyped,Active,N/A,,Low,Types only,Keep updated
+31,@types/moment-timezone,^0.5.9,0.5.9,Latest,https://github.com/DefinitelyTyped,Active,N/A,,Low,Types only,Update with lib
+32,@types/node,^12.11.1,12.x,Latest 12.x,https://github.com/DefinitelyTyped,Maintenance,EOL timeline,,Medium,Missing type fixes,Align with runtime
+33,http-server,^0.11.1,0.11.1,14.x,https://github.com/http-party/http-server,Active,Traversal patches later,,Medium,Dev server exposure,Upgrade when Node uplift
+34,husky,^1.3.1,1.3.1,8.x,https://github.com/typicode/husky,Active,Older hook issues,,Low,Hook bypass risk,Upgrade
+35,chokidar-cli,^1.2.1,1.2.1,3.x,https://github.com/kimmobrunfeldt/chokidar-cli,Active,glob-parent vuln,CVE-2020-28469,Medium,ReDoS patterns,Upgrade
+36,glob,^7.1.3,7.1.6,8.x,https://github.com/isaacs/node-glob,Active,ReDoS chain,CVE-2021-33502,Low,Complex pattern DoS,Upgrade later
+37,fs-extra,~7.0.1,7.0.1,10.x,https://github.com/jprichardson/node-fs-extra,Active,Old Node support,,Low,Unoptimized I/O,Upgrade post Node uplift
+38,jasmine-core,^2.99.1,2.99.x,4.x,https://github.com/jasmine/jasmine,Active,Older async checks,,Low,Test flakiness,Upgrade
+39,karma,^3.0.0,3.x,6.x,https://github.com/karma-runner/karma,Active,Old deps vulnerabilities,,Medium,Test runner attack surface,Upgrade chain
+40,ng-packagr,^9.0.0,9.0.0,9.1.x,https://github.com/ng-packagr/ng-packagr,Maintenance,Build fixes,,Low,Packaging inconsistencies,Upgrade minor
+41,sass-loader,10,10.x,10.4.x,https://github.com/webpack-contrib/sass-loader,Active,node-sass deprecation,,Low,Future incompatibility,Migrate to dart-sass
+42,stylelint,^9.6.0,9.6.x,16.x,https://github.com/stylelint/stylelint,Active,Old rule sets,,Low,CSS security misses,Upgrade (Node uplift required)
+43,internal libs,various,various,Internal latest,(Internal),Internal,Limited advisory data,,Low,Internal supply chain,Internal review cycle
+44,oneleo-ue-platform-*,various,various,Latest,(Internal),Internal,Limited data,,Low,Same,Internal review
+45,signalr,^2.4.1,2.4.1,Migrate,@https://github.com/SignalR/SignalR,Maintenance,Legacy pipeline,,Low,Protocol differences,Migrate
+46,@microsoft/signalr,^3.1.5,3.1.5,3.1.20,https://github.com/dotnet/aspnetcore,LTS,Patches in service releases,,Medium,Real-time stability,Upgrade patch
+47,@microsoft/signalr-protocol-msgpack,^3.1.5,3.1.5,3.1.20,https://github.com/dotnet/aspnetcore,LTS,Same as above,,Low,Serialization edge cases,Upgrade patch
+48,@ngx-translate/core,^12.0.0,12.x,13.x,https://github.com/ngx-translate/core,Active,i18n reliability,,Low,Fallback issues,Upgrade later
+49,@ngx-translate/http-loader,^5.0.0,5.x,6.x,https://github.com/ngx-translate/core,Active,Minor fixes,,Low,Fallback chain errors,Upgrade
+50,ngx-extended-pdf-viewer,9.0.0-alpha.5,9.0.0-alpha.5,Stable release,https://github.com/stephanrauh/ngx-extended-pdf-viewer,Active,Alpha build,,Medium,Rendering instability,Pin stable non-alpha
+51,ng2-pdf-viewer,6.4.0,6.4.0,7.x,https://github.com/VadimDez/ng2-pdf-viewer,Active,Perf/security later,,Low,Memory usage,Upgrade with Angular
+52,jspdf,^2.5.1,2.5.1,2.5.1,https://github.com/parallax/jsPDF,Active,Input sanitization,,Low,Malicious PDF content,Sanitize inputs
+53,ngx-webstorage,^5.0.0,5.x,5.x,https://github.com/PillowPillow/ng2-webstorage,Active,Local storage risk,,Low,Sensitive data,Encrypt/minimize
+54,ngx-logger,4.2.1,4.2.1,5.x,https://github.com/dbfannin/ngx-logger,Active,Sanitization improvements,,Low,Log injection,Upgrade
+55,@ngneat/until-destroy,7,7.x,8.x,https://github.com/ngneat/until-destroy,Active,Decorator improvements,,Low,Memory leaks,Upgrade later
+56,angular2-hotkeys,2.2.0,2.2.0,2.2.0,https://github.com/brtnshrdr/angular2-hotkeys,Low Activity,Minimal updates,,Low,Stale dependencies,Monitor
+57,@openid/appauth,0.3.1,0.3.1,0.4.x,https://github.com/openid/AppAuth-JS,Active,PKCE improvements,,Low,Token intercept risk,Upgrade minor
+58,sonarqube-scanner,2.4.0,2.4.0,5.x,https://github.com/SonarSource/sonarqube-scanner-npm,Active,Older TLS,,Low,Reporting integrity,Upgrade
+59,uuid (transitive v7),7.0.2,7.0.2,8.3.2,https://github.com/uuidjs/uuid,Active,Older fallback RNG,,Low,Same as uuid,Upgrade
+60,tslib,^1.10.0,1.11.1,1.14.1,https://github.com/microsoft/tslib,Active,Minor fixes,,Low,Transpile errors,Upgrade
+61,zone.js duplicate,~0.10.2,0.10.2,0.11.x,https://github.com/angular/zone.js,Maintenance,Same as above,,Low,Duplicate risk,Consolidate
+62,stream,0.0.2,0.0.2,Remove,https://www.npmjs.com/package/stream,Deprecated,Placeholder,,Low,Supply chain risk,Remove
+63,timers,^0.1.1,0.1.1,Remove,https://www.npmjs.com/package/timers,Deprecated,Duplicate Node core,,Low,Redundant surface,Remove
+64,svg-pathdata,^8.0.0,8.x,8.x,https://github.com/nfroidure/svg-pathdata,Active,N/A,,Low,Vector parsing,Keep pinned
+65,wicg-inert,^2.1.0,2.1.0,3.x,https://github.com/WICG/inert,Active,Accessibility improvements,,Low,Focus trap reliability,Upgrade
+66,messageformat,^2.1.0,2.1.x,3.x,https://github.com/messageformat/messageformat,Active,Performance improvements,,Low,i18n injection risk,Upgrade with tests
+67,ngx-translate-messageformat-compiler,^4.4.0,4.4.x,5.x,https://github.com/ngx-translate/core,Active,Sync improvements,,Low,Formatting mismatch,Upgrade
+68,ngx-virtual-scroller,1.0.17,1.0.17,4.x,https://github.com/rintoj/ngx-virtual-scroller,Active,Performance improvements,,Low,Large list perf,Upgrade later
+69,rxjs-tslint-rules,^4.17.2,4.17.x,Replace (ESLint),https://github.com/cartant/rxjs-tslint-rules,Deprecated,TSLint sunset,,Low,Rule gaps,Migrate to eslint-plugin-rxjs
+70,tslint-angular,^3.0.3,3.0.x,Replace,https://github.com/mgechev/tslint-angular,Deprecated,TSLint EOL,,Low,Rule coverage gaps,Migrate
+71,tslint-config-standard,^9.0.0,9.0.x,Replace,https://github.com/standard/eslint-config-standard,Deprecated (TSLint),Same,,Low,Same,Migrate
+72,tslint-sonarts,^1.9.0,1.9.x,Replace,https://github.com/SonarSource/SonarTS,Deprecated,Archived,,Low,Static analysis gaps,Adopt Sonar ESLint rules
+73,codelyzer,^6.0.1,6.0.1,Replace,https://github.com/mgechev/codelyzer,Deprecated,Lint migration,,Low,Rule staleness,Migrate
+74,@angular/compiler-cli,~9.1.13,9.1.13,9.1.13,https://github.com/angular/angular,EOL,As core,,Medium,Build chain unpatched,Upgrade framework
+75,@angular-builders/custom-webpack,~9.2.0,9.2.0,9.2.x,https://github.com/just-jeb/angular-builders,Active,Stability fixes,,Low,Build override risk,Update minor
+76,@angular-devkit/build-angular,~0.901.15,0.901.15,0.901.15,https://github.com/angular/angular-cli,EOL,Tooling vulnerabilities,,Medium,Build chain risk,Upgrade with Angular core
+77,@angular/cli,~9.1.15,9.1.15,9.1.15,https://github.com/angular/angular-cli,EOL,Same,,Medium,CLI vulnerabilities,Upgrade major
+78,@angular/language-service,~9.1.13,9.1.13,9.1.13,https://github.com/angular/angular,EOL,Dev-only,,Low,IDE assistance only,Upgrade with framework
+79,@angularclass/hmr,^2.1.3,2.1.3,2.1.3,https://github.com/AngularClass/angular-hmr,Low Activity,Minimal updates,,Low,HMR instability,Consider removal
+101,stylelint-config-recommended-scss,^3.2.0,3.2.x,Latest major,https://github.com/stylelint-scss/stylelint-config-recommended-scss,Active,Dev-only,,Low,Config,Upgrade with stylelint
+102,stylelint-scss,^3.5.4,3.5.x,5.x,https://github.com/stylelint-scss/stylelint-scss,Active,Dev-only,,Low,Rule coverage,Upgrade
+103,ts-node,~8.3.0,8.3.x,10.x,https://github.com/TypeStrong/ts-node,Active,Node alignment,,Low,Dev-only,Upgrade post Node uplift
+104,typescript,~3.8.3,3.8.3,3.9.10,https://github.com/microsoft/TypeScript,Active,Type system fixes,,Low,Missing checks,Upgrade to latest 3.9.x
+105,url-loader,^4.1.1,4.1.1,Remove (webpack 5 assets),https://github.com/webpack-contrib/url-loader,Deprecated,Future removal,,Low,Build inefficiency,Migrate to asset modules
+106,wait-on,3.2.0,3.2.0,7.x,https://github.com/jeffbski/wait-on,Active,Dev-only,,Low,CI timing,Upgrade
+107,webpack-bundle-analyzer,^4.10.1,4.10.x,4.10.x,https://github.com/webpack-contrib/webpack-bundle-analyzer,Active,N/A,,Low,Visualization only,Keep
+108,internal-library-angular-9,1.7.0-RELEASE,1.7.0,Internal latest,(Internal),Internal,Limited visibility,,Low,Supply chain internal,Internal security review
+109,oneleo-ue-platform-core,4.1.1,4.1.1,Internal latest,(Internal),Internal,Limited data,,Low,Same as above,Review cycle
+110,oneleo-ue-platform-security,3.1.1,3.1.1,Internal latest,(Internal),Internal,Limited data,,Low,Security component,Prioritize internal pen-test
+111,internal-library-1-angular-9,1.11.15-RELEASE,1.11.15,Internal latest,(Internal),Internal,Limited data,,Low,Shared UI risk,SBOM & internal scan
+112,internal-library-2-angular-9,1.8.1-RELEASE,1.8.1,Internal latest,(Internal),Internal,Limited data,,Low,Core functionality,Review
+113,internal-library-3-common-9,4.6.1,4.6.1,Internal latest,(Internal),Internal,Limited data,,Low,RXI integration,Review
+114,internal-library-4-angular-9,2.41.2-RELEASE,2.41.2,Internal latest,(Internal),Internal,Limited data,,Low,UI kit,Review
+115,internal-library-5-angular-9-lib,^1.13.2,1.13.2,Internal latest,(Internal),Internal,Limited data,,Low,Domain-specific,Review
+116,internal-library-6-angular-9-im,^1.0.45,1.0.45,Internal latest,(Internal),Internal,Limited data,,Low,Data handling,Review encryption
+117,signalr,^2.4.1,2.4.1,Migrate,@https://github.com/SignalR/SignalR,Maintenance,Legacy pipeline,,Low,Protocol differences,Migrate
+118,stream duplicate,0.0.2,0.0.2,Remove,https://www.npmjs.com/package/stream,Deprecated,Duplicate Node core,,Low,Redundant,Remove
+119,timers duplicate,^0.1.1,0.1.1,Remove,https://www.npmjs.com/package/timers,Deprecated,Duplicate Node core,,Low,Redundant,Remove
+120,tslib duplicate,^1.10.0,1.11.1,1.14.1,https://github.com/microsoft/tslib,Active,Minor patch,,Low,Duplicate entries,Consolidate
