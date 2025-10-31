@@ -1,4 +1,8 @@
-import { renderCoveragePerModule, renderSeverityByModuleChart, renderCoveragePieByModule } from './unitTestingFunctions.js';
+import { renderUnitTestingChart } from './features/unitTesting.js';
+import { renderSecurityPostureChart } from './features/securityPosture.js';
+import { renderSemanticBugDetectionChart } from './features/semanticBugDetection.js';
+import { renderRegressionRiskSection } from './features/regressionRisk.js';
+
 // Show/hide summary and detail
 document.addEventListener('DOMContentLoaded', () => {
   const summaryBtn = document.getElementById('show-summary-btn');
@@ -20,8 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// D3 chart rendering and CSV parsing logic for the audit dashboard
-// All chart rendering, CSV parsing, and data aggregation functions
 
 
 // --- State and DOM references ---
@@ -262,29 +264,9 @@ export function renderChart(data, type, chartType) {
     chartType = firstOpt ? firstOpt.value : 'module';
   }
   if (type === 'unit-testing') {
-    if (chartType === 'module') {
-      if (!hasColumn('Module')) { showError('CSV is missing the "Module" column.'); return; }
-      renderCoveragePerModule(data, chart, width, height);
-    } else if (chartType === 'severity') {
-      renderSeverityByModuleChart(data, chart, width, height);
-    } else if (chartType === 'pie') {
-      if (!hasColumn('Module')) { showError('CSV is missing the "Module" column.'); return; }
-      renderCoveragePieByModule(data, chart, width, height);
-    }
+    renderUnitTestingChart(data, chartType);
   } else if (type === 'semantic-bug-detection') {
-    if (chartType === 'module') {
-      if (!hasColumn('Module')) { showError('CSV is missing the "Module" column.'); return; }
-      agg = aggregateByColumn(data, 'Module', true);
-      renderBarOrPie(agg, 'bar', 'Issues per Module', 'Module', 'Count');
-    } else if (chartType === 'severity') {
-      if (!hasColumn('Severity')) { showError('CSV is missing the "Severity" column.'); return; }
-      agg = aggregateByColumn(data, 'Severity', true);
-      renderBarOrPie(agg, 'bar', 'Issues per Severity', 'Severity', 'Count');
-    } else if (chartType === 'category') {
-      if (!hasColumn('Category')) { showError('CSV is missing the "Category" column.'); return; }
-      agg = aggregateByColumn(data, 'Category', true);
-      renderBarOrPie(agg, 'pie', 'Issues per Category', '', '');
-    }
+    renderSemanticBugDetectionChart(data, chartType);
   } else if (type === 'security-posture') {
     if (chartType === 'severity') {
       if (!hasColumn('Severity')) { showError('CSV is missing the "Severity" column.'); return; }
@@ -296,13 +278,7 @@ export function renderChart(data, type, chartType) {
       renderBarOrPie(agg, 'pie', 'Items per Maintenance State', '', '');
     }
   } else if (type === 'regression-risk') {
-      // Show commit bar charts above heatmap ONLY in regression-risk
-      if (typeof window.renderCommitsBarCharts === 'function') window.renderCommitsBarCharts();
-      // Always show heatmap
-      const heatmapContainer = document.getElementById('heatmap-container');
-      if (heatmapContainer) heatmapContainer.style.display = 'block';
-      // Hide main chart SVG to avoid empty space
-      chart.style('display', 'none');
+    renderRegressionRiskSection(data, chartType);
   } else {
     // For ALL other sections, always hide commit bar charts
     if (typeof window.hideCommitsBarCharts === 'function') window.hideCommitsBarCharts();
@@ -456,7 +432,45 @@ export function loadData(type, chartType) {
   renderChart(data, type, chartType || 'module');
 }
 
-// --- Chart type selector visibility logic ---
+
+// --- Responsive chart redraw on window resize and container resize ---
+let lastChartType = null;
+window.addEventListener('resize', () => {
+  const activeBtn = document.querySelector('nav button.active');
+  const type = activeBtn ? activeBtn.id : null;
+  if (!type || !sectionData[type] || sectionData[type].length === 0) return;
+  let chartType = null;
+  if (window.chartTypeSelectors && window.chartTypeSelectors[type]) {
+    chartType = window.chartTypeSelectors[type].value;
+  }
+  chartType = chartType || lastChartType || 'module';
+  lastChartType = chartType;
+  // Always re-render semantic-bug-detection and unit-testing charts on resize
+  if (type === 'semantic-bug-detection' || type === 'unit-testing') {
+    renderChart(sectionData[type], type, chartType);
+  } else {
+    renderChart(sectionData[type], type, chartType);
+  }
+});
+
+// ResizeObserver para el contenedor del gráfico
+document.addEventListener('DOMContentLoaded', () => {
+  const chartArea = document.getElementById('chart-area');
+  if (!chartArea) return;
+  const observer = new ResizeObserver(() => {
+    const activeBtn = document.querySelector('nav button.active');
+    const type = activeBtn ? activeBtn.id : null;
+    if (!type || !sectionData[type] || sectionData[type].length === 0) return;
+    let chartType = null;
+    if (window.chartTypeSelectors && window.chartTypeSelectors[type]) {
+      chartType = window.chartTypeSelectors[type].value;
+    }
+    chartType = chartType || lastChartType || 'module';
+    lastChartType = chartType;
+    renderChart(sectionData[type], type, chartType);
+  });
+  observer.observe(chartArea);
+});
 /**
  * Updates the visibility and options of the chart type selector based on the section and data.
  */
@@ -467,7 +481,7 @@ export function updateChartTypeSelectorVisibility() {
     'unit-testing': [
       { value: 'module', label: 'Coverage per Module' },
       { value: 'severity', label: 'Modules per Severity' },
-      { value: 'pie', label: 'Test Coverage Distribution (Pie)' }
+      { value: 'lollipop', label: 'Test Coverage Distribution (Lollipop)' }
     ],
     'semantic-bug-detection': [
       { value: 'module', label: 'Issues per Module' },
