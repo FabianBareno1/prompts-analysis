@@ -232,7 +232,9 @@ main {
   box-shadow: 0 4px 32px #0006;
   padding: var(--space-xl) var(--space-lg) var(--space-xl) var(--space-lg);
   position: relative;
-  overflow: visible;
+  /* allow horizontal scrolling for wide content (markdown tables, large code blocks) */
+  overflow-x: auto;
+  overflow-y: visible;
   display: flex;
   flex-direction: column;
   gap: 1.5em;
@@ -240,6 +242,36 @@ main {
 }
 .chart-area {
   min-height: 25em;
+}
+
+/* Styles to make markdown content (rendered inside <zero-md>) scroll horizontally
+   when tables or wide elements exceed the container width. The stylesheet is
+   also injected into the zero-md template, so these rules will apply inside the
+   web-component's shadow DOM as well. */
+#summary-md-container {
+  -webkit-overflow-scrolling: touch; /* smooth scrolling on supported devices */
+}
+
+/* Make the zero-md host a block-level element that can shrink if needed. */
+zero-md {
+  display: block;
+  min-width: 0;
+}
+
+/* Render tables so they don't force the entire page to overflow. Tables will
+   keep their natural width and the container will show a horizontal scroll. */
+table {
+  display: block;       /* allow scrolling for wide tables */
+  width: max-content;   /* keep columns from compressing */
+  max-width: 100%;      /* don't exceed the container */
+  overflow-x: auto;     /* enable horizontal scrolling on the table itself */
+  white-space: nowrap;  /* prevent cell-wrapping that breaks layout */
+}
+
+/* Ensure code/pre blocks also scroll horizontally when needed. */
+pre, code {
+  overflow-x: auto;
+  white-space: pre;
 }
 .chart-toolbar {
   position: absolute;
