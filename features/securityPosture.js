@@ -24,9 +24,9 @@ export function renderSecurityPostureChart(data, chartType) {
     if (!hasColumn(data, 'Severity')) { showError('CSV is missing the "Severity" column.'); return; }
     agg = aggregateByColumn(data, 'Severity');
     drawBarChart(chart, agg.map(d => d.key), agg.map(d => d.count), width, height, colorScale, 'Items per Severity', 'Severity', 'Count');
-  } else if (chartType === 'category') {
-    if (!hasColumn(data, 'Category')) { showError('CSV is missing the "Category" column.'); return; }
-    agg = aggregateByColumn(data, 'Category');
-    drawPieChart(chart, agg.map(d => d.key), agg.map(d => d.count), width, height, colorScale, 'Items per Category');
+  } else if (chartType === 'state') {
+    if (!hasColumn(data, 'Maintenance State')) { showError('CSV is missing the "Maintenance State" column.'); return; }
+    agg = aggregateByColumn(data, 'Maintenance State');
+    drawPieChart(chart, agg.map(d => d.key), agg.map(d => d.count), width, height, colorScale, 'Items per Maintenance State');
   }
 }
