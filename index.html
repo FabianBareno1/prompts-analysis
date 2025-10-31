@@ -14,8 +14,11 @@
   <div class="header-nav-row">
     <header>Angular Audit</header>
     <nav aria-label="Analysis sections">
-      <button id="unit-testing" class="active" aria-label="View Unit Testing analysis" aria-pressed="true" role="tab">
-        Unit Testing
+      <button id="code-coverage" class="active" aria-label="View Code Coverage analysis" aria-pressed="true" role="tab">
+        Code Coverage
+      </button>
+      <button id="test-smells" aria-label="View Test Smells analysis" aria-pressed="false" role="tab">
+        Test Smells
       </button>
       <button id="security-posture" aria-label="View Security Posture analysis" aria-pressed="false" role="tab">
         Security Posture
@@ -39,17 +42,17 @@
     </div>
     <div class="chart-area" id="chart-area">
       <div id="file-upload-area">
-        <div class="file-upload-group" id="unit-testing-upload" style="display: none; align-items: center; gap: 0.3rem">
-          <label for="unit-testing-file" style="
+        <div class="file-upload-group" id="code-coverage-upload" style="display: none; align-items: center; gap: 0.3rem">
+          <label for="code-coverage-file" style="
                 font-size: 0.98rem;
                 color: #60a5fa;
                 font-weight: 500;
                 margin-bottom: 0;
-              ">CSV Unit Testing:</label>
-          <input type="file" id="unit-testing-file" accept=".csv" aria-label="Upload CSV for Unit Testing"
+              ">CSV code coverage:</label>
+          <input type="file" id="code-coverage-file" accept=".csv" aria-label="Upload CSV for code coverage"
             style="display: none" />
-          <button type="button" class="file-upload-btn" onclick="document.getElementById('unit-testing-file').click()"
-            aria-label="Select CSV for Unit Testing">
+          <button type="button" class="file-upload-btn" onclick="document.getElementById('code-coverage-file').click()"
+            aria-label="Select CSV for code coverage">
             <span class="file-upload-icon" aria-hidden="true">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"
                 style="vertical-align: middle">
@@ -59,13 +62,41 @@
                   stroke-linejoin="round" />
               </svg>
             </span>
-            <span id="unit-testing-file-label">Upload a File</span>
+            <span id="code-coverage-file-label">Upload a File</span>
           </button>
-          <button id="unit-testing-advanced-btn" class="advanced-btn"
-            aria-label="Show advanced chart options for Unit Testing" tabindex="0">
+          <button id="code-coverage-advanced-btn" class="advanced-btn"
+            aria-label="Show advanced chart options for code coverage" tabindex="0">
             Advanced options
           </button>
-          <select id="unit-testing-chart-type" aria-label="Chart type for Unit Testing" style="display: none"></select>
+          <select id="code-coverage-chart-type" aria-label="Chart type for code coverage" style="display: none"></select>
+        </div>
+        <div class="file-upload-group" id="test-smells-upload" style="display: none; align-items: center; gap: 0.3rem">
+          <label for="test-smells-file" style="
+                font-size: 0.98rem;
+                color: #60a5fa;
+                font-weight: 500;
+                margin-bottom: 0;
+              ">CSV test smells:</label>
+          <input type="file" id="test-smells-file" accept=".csv" aria-label="Upload CSV for test smells"
+            style="display: none" />
+          <button type="button" class="file-upload-btn" onclick="document.getElementById('test-smells-file').click()"
+            aria-label="Select CSV for test smells">
+            <span class="file-upload-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"
+                style="vertical-align: middle">
+                <rect x="3" y="14" width="14" height="3" rx="1.5" fill="#374151" />
+                <path d="M10 14V5" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M7 8l3-3 3 3" stroke="#60a5fa" stroke-width="2" stroke-linecap="round"
+                  stroke-linejoin="round" />
+              </svg>
+            </span>
+            <span id="test-smells-file-label">Upload a File</span>
+          </button>
+          <button id="test-smells-advanced-btn" class="advanced-btn"
+            aria-label="Show advanced chart options for test smells" tabindex="0">
+            Advanced options
+          </button>
+          <select id="test-smells-chart-type" aria-label="Chart type for test smells" style="display: none"></select>
         </div>
         <div class="file-upload-group" id="security-posture-upload"
           style="display: none; align-items: center; gap: 0.3rem">
@@ -161,7 +192,8 @@
           : "Upload a File";
       });
     }
-    updateFileLabel("unit-testing-file", "unit-testing-file-label");
+  updateFileLabel("code-coverage-file", "code-coverage-file-label");
+  updateFileLabel("test-smells-file", "test-smells-file-label");
     updateFileLabel("security-posture-file", "security-posture-file-label");
     updateFileLabel(
       "semantic-bug-detection-file",
