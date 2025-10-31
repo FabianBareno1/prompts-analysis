@@ -143,10 +143,27 @@ export function drawPieChart(chart, labels, values, width, height, colorScale, t
     .attr('preserveAspectRatio', 'xMidYMid meet');
 
   const radius = Math.min(width, height) / 2 - 40;
-  const g = svg.append('g').attr('transform', `translate(${width / 2},${height / 2 + 20})`);
+  // Add extra vertical space below the title (e.g., 40px instead of 20)
+  const g = chart.append('g').attr('transform', `translate(${width / 2},${height / 2 + 40})`);
   const pie = d3.pie().value(d => d.value);
-  const dataPie = labels.map((d, i) => ({ label: d, value: values[i] }));
-  const arcs = pie(dataPie);
+  // Aggregate small portions into "Other"
+  const threshold = 2; // Define the threshold for small portions
+  const aggregatedData = labels.map((label, i) => ({ label, value: values[i] }));
+  const smallPortions = aggregatedData.filter(d => d.value <= threshold);
+  const otherValue = smallPortions.reduce((sum, d) => sum + d.value, 0);
+  const filteredData = aggregatedData.filter(d => d.value > threshold);
+
+  if (otherValue > 0) {
+      filteredData.push({ label: 'Other', value: otherValue });
+  }
+
+  const arcs = pie(filteredData);
+  // Calculate total count to convert slice values into percentages
+  const totalCount = filteredData.reduce((s, d) => s + (Number(d.value) || 0), 0);
+
+  const arcGenerator = d3.arc().innerRadius(radius * 0.45).outerRadius(radius);
+  const outerArc = d3.arc().innerRadius(radius * 0.65).outerRadius(radius * 0.85); // Reduced radius for better fit
+
   g.selectAll('path')
     .data(arcs)
     .enter()
@@ -159,13 +176,25 @@ export function drawPieChart(chart, labels, values, width, height, colorScale, t
     .data(arcs)
     .enter()
     .append('text')
-    .attr('transform', d => `translate(${d3.arc().innerRadius(radius * 0.7).outerRadius(radius).centroid(d)})`)
-    .attr('text-anchor', 'middle')
+    .attr('transform', function(d) {
+      // Place label just outside the arc
+      const pos = d3.arc().innerRadius(radius * 1.05).outerRadius(radius * 1.15).centroid(d);
+      return `translate(${pos[0]},${pos[1]})`;
+    })
+    .attr('text-anchor', function(d) {
+      // Place anchor based on angle
+      const midAngle = (d.startAngle + d.endAngle) / 2;
+      return midAngle < Math.PI ? 'start' : 'end';
+    })
     .attr('fill', '#e5e7eb')
     .attr('font-size', '1rem')
-    .text(d => `${d.data.label}: ${d.data.value}`);
-  // Chart title
-  svg.append('text')
+    .attr('font-weight', 'bold')
+    .text(d => {
+      const count = Number(d.data.value) || 0;
+      const pct = totalCount > 0 ? (count / totalCount) * 100 : 0;
+      return `${d.data.label}: ${pct.toFixed(1)}%`;
+    });
+  chart.append('text')
     .attr('x', width / 2)
     .attr('y', 30)
     .attr('text-anchor', 'middle')

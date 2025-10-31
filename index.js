@@ -104,6 +104,70 @@ export function renderChart(data, type, chartType) {
     return;
   }
   csvSummary.style.display = 'none';
+  const chartArea = document.getElementById('chart-area');
+  const width = chartArea ? chartArea.clientWidth - 40 : 600;
+  const height = chartArea ? chartArea.clientHeight - 60 : 400;
+  function hasColumn(col) {
+    return data.length > 0 && Object.keys(data[0]).some(k => k.trim().toLowerCase() === col.trim().toLowerCase());
+  }
+  // SVG responsive
+  chart
+    .attr('width', '100%')
+    .attr('height', '100%')
+    .attr('viewBox', `0 0 ${width} ${height}`)
+    .attr('preserveAspectRatio', 'xMidYMid meet');
+  const colorScale = d3.scaleOrdinal(d3.schemeTableau10);
+  function drawBarChart(labels, values, title, xLabel, yLabel) {
+    const margin = { top: 40, right: 30, bottom: 60, left: 60 };
+    const w = width - margin.left - margin.right;
+    const h = height - margin.top - margin.bottom;
+    const g = chart.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+    const x = d3.scaleBand().domain(labels).range([0, w]).padding(0.2);
+    const y = d3.scaleLinear().domain([0, d3.max(values)]).nice().range([h, 0]);
+    g.append('g')
+      .attr('class', 'x-axis')
+      .attr('transform', `translate(0,${h})`)
+      .call(d3.axisBottom(x))
+      .selectAll('text')
+      .attr('fill', '#e5e7eb')
+      .attr('font-size', '1rem')
+      .attr('transform', 'rotate(-25)')
+      .style('text-anchor', 'end');
+    g.append('g')
+      .attr('class', 'y-axis')
+      .call(d3.axisLeft(y).ticks(6))
+      .selectAll('text')
+      .attr('fill', '#e5e7eb')
+      .attr('font-size', '1rem');
+    g.selectAll('.bar')
+      .data(labels.map((d, i) => ({ label: d, value: values[i] })))
+      .enter()
+      .append('rect')
+      .attr('class', 'bar')
+      .attr('x', d => x(d.label))
+      .attr('y', d => y(d.value))
+      .attr('width', x.bandwidth())
+      .attr('height', d => h - y(d.value))
+      .attr('fill', (d, i) => colorScale(i));
+    g.selectAll('.label')
+      .data(labels.map((d, i) => ({ label: d, value: values[i] })))
+      .enter()
+      .append('text')
+      .attr('x', d => x(d.label) + x.bandwidth() / 2)
+      .attr('y', d => y(d.value) - 6)
+      .attr('text-anchor', 'middle')
+      .attr('fill', '#e5e7eb')
+      .attr('font-size', '0.95rem')
+      .text(d => d.value);
+    chart.append('text')
+      .attr('x', width / 2)
+      .attr('y', margin.top / 2)
+      .attr('text-anchor', 'middle')
+      .attr('fill', '#e5e7eb')
+      .attr('font-size', '1.3rem')
+      .text(title);
+  }
+
   if (type === 'code-coverage') {
     renderCodeCoverageChart(data, chartType);
   } else if (type === 'semantic-bug-detection') {
@@ -154,7 +218,7 @@ export function parseCSVFile(file, type, chartType) {
           else if (chartType === 'category') requiredCols = ['Category'];
           else requiredCols = ['Module'];
         } else if (type === 'security-posture') {
-          if (chartType === 'category') requiredCols = ['Category'];
+          if (chartType === 'state') requiredCols = ['Maintenance State'];
           else requiredCols = ['Severity'];
         } else if (type === 'regression-risk') {
           if (chartType === 'category') requiredCols = ['Category'];
@@ -331,7 +395,7 @@ export function updateChartTypeSelectorVisibility() {
     ],
     'security-posture': [
       { value: 'severity', label: 'Items per Severity' },
-      { value: 'category', label: 'Items per Category' }
+      { value: 'state', label: 'Items per Maintenance State (Pie)' }
     ]
   };
   Object.keys(window.chartTypeSelectors).forEach(type => {
