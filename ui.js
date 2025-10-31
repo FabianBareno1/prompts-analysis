@@ -1,5 +1,5 @@
 import { hideAllChartTypeSelectors } from './uiHelpers.js';
-const SECTIONS = ['unit-testing', 'security-posture', 'semantic-bug-detection'];
+const SECTIONS = ['code-coverage', 'test-smells', 'security-posture', 'semantic-bug-detection'];
 
 
 import {
@@ -75,5 +75,5 @@ Object.keys(chartTypeSelectors).forEach(type => {
 	});
 });
 
-showFileInputForSection('unit-testing');
-tryLoadServerCSV('unit-testing');
+showFileInputForSection('code-coverage');
+tryLoadServerCSV('code-coverage');

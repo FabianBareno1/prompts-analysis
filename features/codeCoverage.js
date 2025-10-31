@@ -1,7 +1,7 @@
 import { chart, showError, clearError, updateSummaryMarkdown } from '../index.js';
 
 
-export function renderUnitTestingChart(data, chartType) {
+export function renderCodeCoverageChart(data, chartType) {
   // Get chart area size for custom charts
   const chartArea = document.getElementById('chart-area');
   const width = chartArea ? chartArea.clientWidth - 40 : 600;

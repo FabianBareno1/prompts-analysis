@@ -1,4 +1,5 @@
-import { renderUnitTestingChart } from './features/unitTesting.js';
+import { renderCodeCoverageChart } from './features/codeCoverage.js';
+import { renderTestSmellsChart } from './features/testSmells.js';
 import { renderSecurityPostureChart } from './features/securityPosture.js';
 import { renderSemanticBugDetectionChart } from './features/semanticBugDetection.js';
 import { renderRegressionRiskSection } from './features/regressionRisk.js';
@@ -34,7 +35,8 @@ export const loader = document.getElementById('loader');
 export const csvSummary = document.getElementById('csv-summary');
 
 export const sectionData = {
-  'unit-testing': null,
+  'code-coverage': null,
+  'test-smells': null,
   'security-posture': null,
   'regression-risk': null,
   'semantic-bug-detection': null
@@ -69,7 +71,8 @@ export function clearError() {
 export function updateSummaryMarkdown(type) {
   if (!summaryMd) return;
   let mdPath = '';
-  if (type === 'unit-testing') mdPath = 'files/summaries/UnitTestingSummary.md';
+  if (type === 'code-coverage') mdPath = 'files/summaries/CodeCoverageSummary.md';
+  else if (type === 'test-smells') mdPath = 'files/summaries/TestSmellsSummary.md';
   else if (type === 'security-posture') mdPath = 'files/summaries/SecurityPostureSummary.md';
   else if (type === 'semantic-bug-detection') mdPath = 'files/summaries/SemanticBugDetectionSummary.md';
   // Do not show markdown for regression-risk
@@ -88,7 +91,7 @@ export function updateSummaryMarkdown(type) {
 /**
  * Renders the main chart based on the data and section type.
  * @param {Array<Object>} data - Parsed CSV data.
- * @param {string} type - Active section (unit-testing, security-posture, etc).
+ * @param {string} type - Active section (code-coverage, security-posture, etc).
  * @param {string} chartType - Chart type to display.
  */
 export function renderChart(data, type, chartType) {
@@ -101,10 +104,12 @@ export function renderChart(data, type, chartType) {
     return;
   }
   csvSummary.style.display = 'none';
-  if (type === 'unit-testing') {
-    renderUnitTestingChart(data, chartType);
+  if (type === 'code-coverage') {
+    renderCodeCoverageChart(data, chartType);
   } else if (type === 'semantic-bug-detection') {
     renderSemanticBugDetectionChart(data, chartType);
+  } else if (type === 'test-smells') {
+    renderTestSmellsChart(data, chartType);
   } else if (type === 'security-posture') {
     renderSecurityPostureChart(data, chartType);
   } else if (type === 'regression-risk') {
@@ -141,7 +146,7 @@ export function parseCSVFile(file, type, chartType) {
           return;
         }
         let requiredCols = [];
-        if (type === 'unit-testing') {
+        if (type === 'code-coverage') {
           if (chartType === 'severity') requiredCols = ['Severity'];
           else requiredCols = ['Module'];
         } else if (type === 'semantic-bug-detection') {
@@ -198,7 +203,8 @@ export function parseCSVFile(file, type, chartType) {
  */
 export async function tryLoadServerCSV(type, chartType) {
   let csvPath;
-  if (type === 'unit-testing') csvPath = 'files/details/UnitTesting.csv';
+  if (type === 'code-coverage') csvPath = 'files/details/CodeCoverage.csv';
+  else if (type === 'test-smells') csvPath = 'files/details/TestSmells.csv';
   else if (type === 'security-posture') csvPath = 'files/details/SecurityPosture.csv';
   else if (type === 'regression-risk') csvPath = 'files/details/RegressionRisk.csv';
   else if (type === 'semantic-bug-detection') csvPath = 'files/details/SEMANTIC_BUG_REPORT.csv';
@@ -275,8 +281,8 @@ window.addEventListener('resize', () => {
   }
   chartType = chartType || lastChartType || 'module';
   lastChartType = chartType;
-  // Always re-render semantic-bug-detection and unit-testing charts on resize
-  if (type === 'semantic-bug-detection' || type === 'unit-testing') {
+  // Always re-render semantic-bug-detection and code-coverage charts on resize
+  if (type === 'semantic-bug-detection' || type === 'code-coverage') {
     renderChart(sectionData[type], type, chartType);
   } else {
     renderChart(sectionData[type], type, chartType);
@@ -308,10 +314,15 @@ export function updateChartTypeSelectorVisibility() {
   const activeBtn = document.querySelector('nav button.active');
   const activeType = activeBtn ? activeBtn.id : null;
   const chartOptions = {
-    'unit-testing': [
+    'code-coverage': [
       { value: 'module', label: 'Coverage per Module' },
       { value: 'severity', label: 'Modules per Severity' },
       { value: 'lollipop', label: 'Test Coverage Distribution (Lollipop)' }
+    ],
+    'test-smells': [
+      { value: 'module', label: 'Smells per Module' },
+      { value: 'severity', label: 'Smells per Severity' },
+      { value: 'category', label: 'Smells per Category' }
     ],
     'semantic-bug-detection': [
       { value: 'module', label: 'Issues per Module' },

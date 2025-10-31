@@ -1,0 +1,24 @@
+Module,Filepath,Severity,Smells,Count_High,Count_Medium,Count_Low
+"app.browser (src/app)","src/app/app.component.spec.ts","","",0,0,0
+"chartjs (src/app/modules/application/chartjs)","src/app/modules/application/chartjs/chartjs.component.spec.ts","","",0,0,0
+"components (src/app/modules/application/components)","src/app/modules/application/components/components.component.spec.ts","","",0,0,0
+"components (src/app/modules/application/components)","src/app/modules/application/components/smartphone/smartphone.component.spec.ts","","",0,0,0
+"items (src/app/modules/application/items)","src/app/modules/application/items/items.component.spec.ts","","",0,0,0
+"items (src/app/modules/application/items)","src/app/modules/application/items/items.service.spec.ts","medium","testbed-misuse",0,1,0
+"leaflet-feature (src/app/modules/application/leaflet-feature)","src/app/modules/application/leaflet-feature/leaflet-feature.component.spec.ts","","",0,0,0
+"movies-images-list (src/app/modules/application/movies-images-list)","src/app/modules/application/movies-images-list/config/config.service.spec.ts","medium","testbed-misuse",0,1,0
+"movies-images-list (src/app/modules/application/movies-images-list)","src/app/modules/application/movies-images-list/items/items.service.spec.ts","medium","testbed-misuse",0,1,0
+"movies-images-list (src/app/modules/application/movies-images-list)","src/app/modules/application/movies-images-list/movies-images-list.component.spec.ts","","",0,0,0
+"movies-images-list (src/app/modules/application/movies-images-list)","src/app/modules/application/movies-images-list/page-list/page-list.component.spec.ts","","",0,0,0
+"pagination (src/app/modules/application/movies-images-list/pagination)","src/app/modules/application/movies-images-list/pagination/pagination.component.spec.ts","","",0,0,0
+"search-bar (src/app/modules/application/movies-images-list/search-bar)","src/app/modules/application/movies-images-list/search-bar/search-bar.component.spec.ts","","",0,0,0
+"search-result (src/app/modules/application/movies-images-list/search-result)","src/app/modules/application/movies-images-list/search-result/search-result.component.spec.ts","","",0,0,0
+"services (src/app/modules/application/services)","src/app/modules/application/services/services.component.spec.ts","","",0,0,0
+"services (src/app/modules/application/services)","src/app/modules/application/services/song/song.service.spec.ts","","",0,0,0
+"template-driven-forms (src/app/modules/application/template-driven-forms)","src/app/modules/application/template-driven-forms/movie.spec.ts","","",0,0,0
+"template-driven-forms (src/app/modules/application/template-driven-forms)","src/app/modules/application/template-driven-forms/template-driven-forms.component.spec.ts","","",0,0,0
+"about (src/app/modules/general/about)","src/app/modules/general/about/about.component.spec.ts","","",0,0,0
+"contact (src/app/modules/general/contact)","src/app/modules/general/contact/contact.component.spec.ts","","",0,0,0
+"app.browser (src/app)","src/app/modules/general/home/home.component.spec.ts","","",0,0,0
+"app.browser (src/app)","src/app/modules/general/not-found/not-found.component.spec.ts","","",0,0,0
+"signin (src/app/modules/general/signin)","src/app/modules/general/signin/signin.component.spec.ts","","",0,0,0
