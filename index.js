@@ -179,6 +179,8 @@ export function renderChart(data, type, chartType) {
     }
 
     const arcs = pie(filteredData);
+    // Calculate total count to convert slice values into percentages
+    const totalCount = filteredData.reduce((s, d) => s + (Number(d.value) || 0), 0);
 
     const arcGenerator = d3.arc().innerRadius(radius * 0.45).outerRadius(radius);
     const outerArc = d3.arc().innerRadius(radius * 0.65).outerRadius(radius * 0.85); // Reduced radius for better fit
@@ -208,7 +210,11 @@ export function renderChart(data, type, chartType) {
       .attr('fill', '#e5e7eb')
       .attr('font-size', '1rem')
       .attr('font-weight', 'bold')
-      .text(d => `${d.data.label}: ${d.data.value.toFixed(1)}%`);
+      .text(d => {
+        const count = Number(d.data.value) || 0;
+        const pct = totalCount > 0 ? (count / totalCount) * 100 : 0;
+        return `${d.data.label}: ${pct.toFixed(1)}%`;
+      });
     chart.append('text')
       .attr('x', width / 2)
       .attr('y', 30)
