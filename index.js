@@ -311,7 +311,7 @@ export function updateChartTypeSelectorVisibility() {
     'unit-testing': [
       { value: 'module', label: 'Coverage per Module' },
       { value: 'severity', label: 'Modules per Severity' },
-      { value: 'pie', label: 'Test Coverage Distribution (Pie)' }
+      { value: 'lollipop', label: 'Test Coverage Distribution (Lollipop)' }
     ],
     'semantic-bug-detection': [
       { value: 'module', label: 'Issues per Module' },
