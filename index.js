@@ -164,119 +164,13 @@ export function renderChart(data, type, chartType) {
       .attr('font-size', '1.3rem')
       .text(title);
   }
-  function drawPieChart(labels, values, title) {
-    const radius = Math.min(width, height) / 2 - 40;
-    // Add extra vertical space below the title (e.g., 40px instead of 20)
-    const g = chart.append('g').attr('transform', `translate(${width / 2},${height / 2 + 40})`);
-    const pie = d3.pie().value(d => d.value);
-    // Aggregate small portions into "Other"
-    const threshold = 2; // Define the threshold for small portions
-    const aggregatedData = labels.map((label, i) => ({ label, value: values[i] }));
-    const smallPortions = aggregatedData.filter(d => d.value <= threshold);
-    const otherValue = smallPortions.reduce((sum, d) => sum + d.value, 0);
-    const filteredData = aggregatedData.filter(d => d.value > threshold);
 
-    if (otherValue > 0) {
-        filteredData.push({ label: 'Other', value: otherValue });
-    }
-
-    const arcs = pie(filteredData);
-    // Calculate total count to convert slice values into percentages
-    const totalCount = filteredData.reduce((s, d) => s + (Number(d.value) || 0), 0);
-
-    const arcGenerator = d3.arc().innerRadius(radius * 0.45).outerRadius(radius);
-    const outerArc = d3.arc().innerRadius(radius * 0.65).outerRadius(radius * 0.85); // Reduced radius for better fit
-
-    g.selectAll('path')
-      .data(arcs)
-      .enter()
-      .append('path')
-      .attr('d', d3.arc().innerRadius(radius * 0.45).outerRadius(radius))
-      .attr('fill', (d, i) => colorScale(i))
-      .attr('stroke', '#222')
-      .attr('stroke-width', 2);
-    g.selectAll('text')
-      .data(arcs)
-      .enter()
-      .append('text')
-      .attr('transform', function(d) {
-        // Place label just outside the arc
-        const pos = d3.arc().innerRadius(radius * 1.05).outerRadius(radius * 1.15).centroid(d);
-        return `translate(${pos[0]},${pos[1]})`;
-      })
-      .attr('text-anchor', function(d) {
-        // Place anchor based on angle
-        const midAngle = (d.startAngle + d.endAngle) / 2;
-        return midAngle < Math.PI ? 'start' : 'end';
-      })
-      .attr('fill', '#e5e7eb')
-      .attr('font-size', '1rem')
-      .attr('font-weight', 'bold')
-      .text(d => {
-        const count = Number(d.data.value) || 0;
-        const pct = totalCount > 0 ? (count / totalCount) * 100 : 0;
-        return `${d.data.label}: ${pct.toFixed(1)}%`;
-      });
-    chart.append('text')
-      .attr('x', width / 2)
-      .attr('y', 30)
-      .attr('text-anchor', 'middle')
-      .attr('fill', '#e5e7eb')
-      .attr('font-size', '1.3rem')
-      .text(title);
-  }
-
-  // Helper functions for safe aggregation
-  function aggregateByColumn(data, column, filterEmpty = false) {
-    if (filterEmpty) {
-      return Array.from(
-        d3.rollup(
-          data.filter(row => row[column] && row[column].trim() !== ''),
-          v => v.length,
-          d => d[column]
-        ),
-        ([key, count]) => ({ key, count })
-      );
-    } else {
-      return Array.from(
-        d3.rollup(
-          data,
-          v => v.length,
-          d => d[column] || d[column.toLowerCase()]
-        ),
-        ([key, count]) => ({ key, count })
-      );
-    }
-  }
-
-  function renderBarOrPie(agg, chartType, title, xLabel, yLabel) {
-    if (chartType === 'pie') {
-      drawPieChart(agg.map(d => d.key), agg.map(d => d.count), title);
-    } else {
-      drawBarChart(agg.map(d => d.key), agg.map(d => d.count), title, xLabel, yLabel);
-    }
-  }
-
-  let agg = [];
-  if (!chartType) {
-    const selector = window.chartTypeSelectors ? window.chartTypeSelectors[type] : null;
-    const firstOpt = selector ? selector.querySelector('option') : null;
-    chartType = firstOpt ? firstOpt.value : 'module';
-  }
   if (type === 'unit-testing') {
     renderUnitTestingChart(data, chartType);
   } else if (type === 'semantic-bug-detection') {
     renderSemanticBugDetectionChart(data, chartType);
   } else if (type === 'security-posture') {
-    if (chartType === 'severity') {
-      if (!hasColumn('Severity')) { showError('CSV is missing the "Severity" column.'); return; }
-      agg = aggregateByColumn(data, 'Severity');
-      renderBarOrPie(agg, 'bar', 'Items per Severity', 'Severity', 'Count');
-    } else if (chartType === 'state') {
-      if (!hasColumn('Maintenance State')) { showError('CSV is missing the "Maintenance State" column.'); return; }
-      agg = aggregateByColumn(data, 'Maintenance State');
-      renderBarOrPie(agg, 'pie', 'Items per Maintenance State', '', '');
-    }
+    renderSecurityPostureChart(data, chartType);
   } else if (type === 'regression-risk') {
     renderRegressionRiskSection(data, chartType);
   } else {
