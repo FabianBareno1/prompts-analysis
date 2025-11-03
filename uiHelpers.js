@@ -287,10 +287,13 @@ export function renderModuleHeatmap({ modules, months, churnMatrix }) {
     .data((row, i) => row.map((d, j) => ({ churn: d, month: months[j], module: modules[i] })))
     .enter()
     .append('rect')
-    .attr('x', (d, j) => j * cellWidth)
-    .attr('width', cellWidth)
-    .attr('height', cellHeight)
-  .attr('fill', d => colorScale(d.churn))
+    .attr('x', (d, j) => j * cellWidth + 2) // 2px separation left
+    .attr('y', 2) // 2px separation top
+    .attr('width', cellWidth - 4) // 2px separation on each side
+    .attr('height', cellHeight - 4) // 2px separation on each side
+    .attr('rx', 6) // border radius horizontal
+    .attr('ry', 6) // border radius vertical
+    .attr('fill', d => colorScale(d.churn))
     .on('mouseover', function(event, d) {
         const churnValue = (d.churn === 0 || isNaN(d.churn)) ? 0 : d.churn;
         tooltip.style('display', 'block')
