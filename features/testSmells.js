@@ -303,8 +303,14 @@ function renderSmellsPerCategory(data, svg, width, height) {
     return { Smell, total: stats.count, severity: sev };
   });
 
-  // Sort ascending by total occurrences
-  agg = agg.sort((a,b) => a.total - b.total);
+  // Sort by severity
+  const severityOrder = { 'High': 0, 'Medium': 1, 'Low': 2 }; 
+  agg = agg.sort((a, b) => { 
+    if (severityOrder[a.severity] !== severityOrder[b.severity]) { 
+      return severityOrder[a.severity] - severityOrder[b.severity]; 
+    } 
+    return a.total - b.total; 
+  });
 
   const margin = { top: 60, right: 30, bottom: 160, left: 70 };
   const w = width - margin.left - margin.right;
