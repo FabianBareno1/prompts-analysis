@@ -251,8 +251,8 @@ export function renderModuleHeatmap({ modules, months, churnMatrix }) {
   const height = (container.node().clientHeight || 600) - margin.top - margin.bottom;
   const cellWidth = width / months.length;
   const cellHeight = height / modules.length;
-  const colorScale = d3.scaleSequential(d3.interpolateReds)
-    .domain([0, d3.max(churnMatrix.flat())]);
+  const colorScale = d3.scaleOrdinal(d3.schemeReds[9])
+    .domain(Array.from({length: 9}, (_, i) => Math.round(i * d3.max(churnMatrix.flat()) / 8)));
   const totalWidth = width + margin.left + margin.right;
   const totalHeight = height + margin.top + margin.bottom;
   const svg = container.append('svg')
@@ -290,10 +290,11 @@ export function renderModuleHeatmap({ modules, months, churnMatrix }) {
     .attr('x', (d, j) => j * cellWidth)
     .attr('width', cellWidth)
     .attr('height', cellHeight)
-    .attr('fill', d => colorScale(d.churn))
+  .attr('fill', d => colorScale(d.churn))
     .on('mouseover', function(event, d) {
-      tooltip.style('display', 'block')
-        .html(`<b>Module:</b> ${d.module}<br><b>Month:</b> ${d.month}<br><b>Churn:</b> ${d.churn}`);
+        const churnValue = (d.churn === 0 || isNaN(d.churn)) ? 0 : d.churn;
+        tooltip.style('display', 'block')
+          .html(`<b>Module:</b> ${d.module}<br><b>Month:</b> ${d.month}<br><b>Churn:</b> ${churnValue}`);
       d3.select(this).attr('stroke', '#fff').attr('stroke-width', 2);
     })
     .on('mousemove', function(event) {
