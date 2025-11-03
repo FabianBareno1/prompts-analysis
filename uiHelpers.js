@@ -251,8 +251,15 @@ export function renderModuleHeatmap({ modules, months, churnMatrix }) {
   const height = (container.node().clientHeight || 600) - margin.top - margin.bottom;
   const cellWidth = width / months.length;
   const cellHeight = height / modules.length;
-  const colorScale = d3.scaleOrdinal(d3.schemeReds[9])
-    .domain(Array.from({length: 9}, (_, i) => Math.round(i * d3.max(churnMatrix.flat()) / 8)));
+  const maxChurn = d3.max(churnMatrix.flat());
+  const colorSteps = 5;
+  // Step values: 0, 1/49, 2/49, ..., 49/49 of maxChurn
+  const stepValues = Array.from({length: colorSteps}, (_, i) => i * maxChurn / (colorSteps - 1));
+  // Build color range: white for 0, then interpolate greens for the rest
+  const colorRange = ['#fff', ...Array.from({length: colorSteps - 1}, (_, i) => d3.interpolateGreens((i + 1) / (colorSteps - 1)))];
+  const colorScale = d3.scaleOrdinal()
+    .domain(stepValues)
+    .range(colorRange);
   const totalWidth = width + margin.left + margin.right;
   const totalHeight = height + margin.top + margin.bottom;
   const svg = container.append('svg')
@@ -293,7 +300,14 @@ export function renderModuleHeatmap({ modules, months, churnMatrix }) {
     .attr('height', cellHeight - 4) // 2px separation on each side
     .attr('rx', 6) // border radius horizontal
     .attr('ry', 6) // border radius vertical
-    .attr('fill', d => colorScale(d.churn))
+    .attr('fill', d => {
+      if (maxChurn === 0 || d.churn === 0 || isNaN(d.churn)) return '#fff';
+      // Find closest step for churn value
+      for (let i = 0; i < stepValues.length; i++) {
+        if (d.churn <= stepValues[i]) return colorRange[i];
+      }
+      return colorRange[colorRange.length - 1];
+    })
     .on('mouseover', function(event, d) {
         const churnValue = (d.churn === 0 || isNaN(d.churn)) ? 0 : d.churn;
         tooltip.style('display', 'block')
