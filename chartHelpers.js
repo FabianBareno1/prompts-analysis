@@ -1,3 +1,270 @@
+/**
+ * Draws a grouped bar chart for category/subcategory counts.
+ * @param {d3.Selection} chart - D3 selection of the container.
+ * @param {Array<Object>} data - Original CSV data.
+ * @param {number} width - Chart width.
+ * @param {number} height - Chart height.
+ * @param {d3.ScaleOrdinal} colorScale - D3 color scale.
+ * @param {string} title - Chart title.
+ */
+
+export function drawGroupedBarChart(chart, data, width, height, colorScale, title) {
+  chart.selectAll('svg').remove();
+  if (!width || !height) {
+    const bounds = chart.node().getBoundingClientRect();
+    width = bounds.width || 650;
+    height = bounds.height || 600;
+  }
+  // Aggregate counts by category and subcategory
+  const nested = d3.rollups(
+    data,
+    v => v.length,
+    d => d.Category,
+    d => d.Subcategory
+  );
+  const categories = nested.map(([cat]) => cat);
+  // Only include subcategories that have at least one value in any category
+  const subcategories = Array.from(new Set(
+    nested.flatMap(([cat, subcats]) => subcats.filter(([subcat, count]) => count > 0).map(([subcat]) => subcat))
+  ));
+  // Build data for grouped bars, only for subcategories with value > 0
+  const barData = categories.map(cat => {
+    const subcatMap = new Map(nested.find(([c]) => c === cat)[1]);
+    return {
+      category: cat,
+      values: subcategories.map(subcat => ({
+        subcategory: subcat,
+        value: subcatMap.get(subcat) || 0
+      })).filter(d => d.value > 0)
+    };
+  });
+
+  // Reduce chart width to leave space for vertical legend
+  const legendWidth = 180;
+  // Increase right margin to further narrow the chart area
+  const margin = { top: 50, right: legendWidth + 80, bottom: 100, left: 60 };
+  const w = width - margin.left - margin.right;
+  const h = height - margin.top - margin.bottom;
+  const svg = chart.append('svg')
+    .attr('width', '100%')
+    .attr('height', '100%')
+    .attr('viewBox', `0 0 ${width} ${height}`)
+    .attr('preserveAspectRatio', 'xMidYMid meet');
+  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+  // Increase padding for few categories to center bars
+  const x0 = d3.scaleBand()
+    .domain(categories)
+    .range([0, w])
+    .paddingInner(categories.length <= 2 ? 0.45 : 0.18);
+  // x1 only for subcategories with value > 0
+  const x1 = d3.scaleBand()
+    .domain(subcategories)
+    .range([0, x0.bandwidth()])
+    .padding(0.12);
+  const y = d3.scaleLinear()
+    .domain([0, d3.max(barData, d => d3.max(d.values, v => v.value)) || 1])
+    .nice()
+    .range([h, 0]);
+
+  // Bars
+  g.selectAll('g.category')
+    .data(barData)
+    .enter()
+    .append('g')
+    .attr('class', 'category')
+    .attr('transform', d => `translate(${x0(d.category)},0)`)
+    .selectAll('rect')
+    .data(d => d.values)
+    .enter()
+    .append('rect')
+    .attr('x', d => x1(d.subcategory))
+    .attr('y', d => y(d.value))
+    .attr('width', x1.bandwidth())
+    .attr('height', d => h - y(d.value))
+    .attr('fill', d => colorScale(d.subcategory))
+    .attr('opacity', 0.92);
+
+  // Value labels
+  g.selectAll('g.category')
+    .selectAll('text.bar-label')
+    .data(d => d.values)
+    .enter()
+    .append('text')
+    .attr('class', 'bar-label')
+    .attr('x', d => x1(d.subcategory) + x1.bandwidth() / 2)
+    .attr('y', d => y(d.value) - 4)
+    .attr('text-anchor', 'middle')
+    .attr('fill', '#e5e7eb')
+    .attr('font-size', width < 500 ? '0.65rem' : width < 700 ? '0.8rem' : '0.9rem')
+    .text(d => d.value > 0 ? d.value : '');
+
+  // X axis (category names centered under grouped bars, horizontal)
+  g.append('g')
+    .attr('class', 'x-axis')
+    .attr('transform', `translate(0,${h})`)
+    .call(d3.axisBottom(x0))
+    .selectAll('text')
+    .attr('fill', '#e5e7eb')
+    .attr('font-size', width < 500 ? '0.7rem' : width < 700 ? '0.85rem' : '0.95rem')
+    .attr('transform', null)
+    .style('text-anchor', 'middle');
+
+  // Y axis
+  g.append('g')
+    .attr('class', 'y-axis')
+    .call(d3.axisLeft(y).ticks(6))
+    .selectAll('text')
+    .attr('fill', '#e5e7eb')
+    .attr('font-size', width < 500 ? '0.7rem' : width < 700 ? '0.85rem' : '0.95rem');
+
+  // Chart title
+  svg.append('text')
+    .attr('x', width / 2)
+    .attr('y', margin.top / 2)
+    .attr('text-anchor', 'middle')
+    .attr('fill', '#e5e7eb')
+    .attr('font-size', width < 500 ? '0.9rem' : width < 700 ? '1rem' : '1.1rem')
+    .text(title);
+
+  // Legend as a vertical column on the right
+  const legend = svg.append('g')
+    .attr('class', 'legend')
+    .attr('transform', `translate(${width - legendWidth + 10},${margin.top})`);
+  subcategories.forEach((subcat, i) => {
+    legend.append('rect')
+      .attr('x', 0)
+      .attr('y', i * 28)
+      .attr('width', 18)
+      .attr('height', 18)
+      .attr('fill', colorScale(subcat));
+    legend.append('text')
+      .attr('x', 26)
+      .attr('y', i * 28 + 13)
+      .attr('fill', '#e5e7eb')
+      .attr('font-size', '0.95rem')
+      .text(subcat);
+  });
+}
+/**
+ * Draws a two-level donut chart (category and subcategory).
+ * @param {d3.Selection} chart - D3 selection of the container.
+ * @param {Array<Object>} data - Original CSV data.
+ * @param {number} width - Chart width.
+ * @param {number} height - Chart height.
+ * @param {d3.ScaleOrdinal} colorScale - D3 color scale.
+ * @param {string} title - Chart title.
+ */
+export function drawNestedPieChart(chart, data, width, height, colorScale, title) {
+  chart.selectAll('svg').remove();
+  if (!width || !height) {
+    const bounds = chart.node().getBoundingClientRect();
+    width = bounds.width || 650;
+    height = bounds.height || 600;
+  }
+  const svg = chart.append('svg')
+    .attr('width', '100%')
+    .attr('height', '100%')
+    .attr('viewBox', `0 0 ${width} ${height}`)
+    .attr('preserveAspectRatio', 'xMidYMid meet');
+  const radius = Math.min(width, height) / 2 - 40;
+  const g = svg.append('g').attr('transform', `translate(${width / 2},${height / 2 + 40})`);
+
+  // Aggregate counts by category and subcategory
+  const nested = d3.rollups(
+    data,
+    v => v.length,
+    d => d.Category,
+    d => d.Subcategory
+  );
+
+  // Convert to d3 hierarchy format
+  const hierarchyData = {
+    name: 'root',
+    children: nested.map(([category, subcats]) => ({
+      name: category,
+      children: subcats.map(([subcat, count]) => ({ name: subcat, value: count }))
+    }))
+  };
+  const root = d3.hierarchy(hierarchyData)
+    .sum(d => d.value || 0)
+    .sort((a, b) => b.value - a.value);
+
+  // Partition layout for sunburst/donut
+  const partition = d3.partition()
+    .size([2 * Math.PI, radius]);
+  partition(root);
+
+  // Color by category (level 1)
+  const categoryNames = Array.from(new Set(data.map(d => d.Category)));
+  const categoryColor = d3.scaleOrdinal().domain(categoryNames).range(d3.schemeTableau10);
+
+  // Draw arcs
+  const arc = d3.arc()
+    .startAngle(d => d.x0)
+    .endAngle(d => d.x1)
+    .innerRadius(d => d.depth === 1 ? radius * 0.45 : radius * 0.7)
+    .outerRadius(d => d.depth === 1 ? radius * 0.7 : radius);
+
+  g.selectAll('path')
+    .data(root.descendants().filter(d => d.depth > 0))
+    .enter()
+    .append('path')
+    .attr('d', arc)
+    .attr('fill', d => d.depth === 1 ? categoryColor(d.data.name) : colorScale(d.parent.data.name + '-' + d.data.name))
+    .attr('stroke', '#222')
+    .attr('stroke-width', 1.5)
+    .on('mouseover', function (event, d) {
+      d3.select(this).attr('opacity', 0.7);
+    })
+    .on('mouseout', function () {
+      d3.select(this).attr('opacity', 1);
+    });
+
+  // Category labels (center ring)
+  g.selectAll('text.category-label')
+    .data(root.children)
+    .enter()
+    .append('text')
+    .attr('class', 'category-label')
+    .attr('transform', d => {
+      const angle = ((d.x0 + d.x1) / 2) * 180 / Math.PI - 90;
+      const r = (radius * 0.45 + radius * 0.7) / 2;
+      return `rotate(${angle}) translate(${r},0) rotate(${angle > 90 ? 180 : 0})`;
+    })
+    .attr('text-anchor', 'middle')
+    .attr('alignment-baseline', 'middle')
+    .attr('fill', '#e5e7eb')
+    .attr('font-size', '1rem')
+    .text(d => `${d.data.name} (${d.value})`);
+
+  // Subcategory labels (outer ring)
+  g.selectAll('text.subcategory-label')
+    .data(root.leaves())
+    .enter()
+    .append('text')
+    .attr('class', 'subcategory-label')
+    .attr('transform', d => {
+      const angle = ((d.x0 + d.x1) / 2) * 180 / Math.PI - 90;
+      const r = (radius * 0.7 + radius) / 2;
+      return `rotate(${angle}) translate(${r},0) rotate(${angle > 90 ? 180 : 0})`;
+    })
+    .attr('text-anchor', 'middle')
+    .attr('alignment-baseline', 'middle')
+    .attr('fill', '#e5e7eb')
+    .attr('font-size', '0.9rem')
+    .text(d => `${d.data.name} (${d.value})`);
+
+  // Central label (title)
+  g.append('text')
+    .attr('x', 0)
+    .attr('y', 0)
+    .attr('text-anchor', 'middle')
+    .attr('fill', '#e5e7eb')
+    .attr('font-size', '1.3rem')
+    .attr('font-weight', 'bold')
+    .text(title);
+}
 // Common chart rendering and aggregation helpers for all dashboard sections
 
 export function drawBarChart(chart, labels, values, width, height, colorScale, title, xLabel, yLabel) {
