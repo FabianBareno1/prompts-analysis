@@ -3,6 +3,7 @@ import { renderTestSmellsChart } from './features/testSmells.js';
 import { renderSecurityPostureChart } from './features/securityPosture.js';
 import { renderSemanticBugDetectionChart } from './features/semanticBugDetection.js';
 import { renderRegressionRiskSection } from './features/regressionRisk.js';
+import { loadSecurityDatatable } from './uiSecurityFunctions.js';
 
 // Show/hide summary and detail
 document.addEventListener('DOMContentLoaded', () => {
@@ -29,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // --- State and DOM references ---
 export const chart = d3.select('#chart');
+export const dependenciesDatatable = document.getElementById('dependencies-datatable');
 export const summaryMd = document.getElementById('summary-md');
 export const errorMessage = document.getElementById('error-message');
 export const loader = document.getElementById('loader');
@@ -65,6 +67,30 @@ export function clearError() {
 }
 
 /**
+ * Show or hide the security datatable area depending on the active section.
+ *
+ * Behavior:
+ * - When `type` is 'security-posture' this will load the default
+ *   CSV file for the security posture datatable and show the related
+ *   datatable elements in the UI.
+ * - For any other `type` the datatable container is hidden.
+ *
+ * @param {string} type - Active section identifier (e.g. 'security-posture').
+ */
+export function showSecurityDatatable(type) {
+  let csvPath = '';
+  const datatableContainer = document.getElementById('datatable-container');
+  if (type === 'security-posture') {
+    csvPath = 'files/details/SecurityPosture.csv';
+    loadSecurityDatatable(csvPath);
+    dependenciesDatatable.style.display = csvPath ? 'block' : 'none';
+    if (datatableContainer) datatableContainer.style.display = csvPath ? 'block' : 'none';
+  } else {
+    if (datatableContainer) datatableContainer.style.display = 'none';
+  }
+}
+
+/**
  * Updates the markdown summary shown above the chart according to the type.
  * @param {string} type - Active section.
  */
@@ -73,11 +99,10 @@ export function updateSummaryMarkdown(type) {
   let mdPath = '';
   if (type === 'code-coverage') mdPath = 'files/summaries/CodeCoverageSummary.md';
   else if (type === 'test-smells') mdPath = 'files/summaries/TestSmellsSummary.md';
-  else if (type === 'security-posture') mdPath = 'files/summaries/SecurityPostureSummary.md';
   else if (type === 'semantic-bug-detection') mdPath = 'files/summaries/SemanticBugDetectionSummary.md';
   // Do not show markdown for regression-risk
   summaryMd.setAttribute('src', mdPath);
-  if (type === 'regression-risk') {
+  if (type === 'regression-risk'  || type === 'security-posture') {
     summaryMd.style.display = 'none';
     const summaryContainer = document.getElementById('summary-md-container');
     if (summaryContainer) summaryContainer.style.display = 'none';
@@ -95,6 +120,7 @@ export function updateSummaryMarkdown(type) {
  * @param {string} chartType - Chart type to display.
  */
 export function renderChart(data, type, chartType) {
+  showSecurityDatatable(type);
   updateSummaryMarkdown(type);
   clearError();
   chart.selectAll('*').remove();

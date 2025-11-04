@@ -221,7 +221,7 @@ main {
   box-sizing: border-box;
   background: none;
 }
-#summary-md-container,
+#summary-md-container, #datatable-container,
 .chart-area {
   width: 100%;
   max-width: 68.75em;
@@ -262,7 +262,7 @@ zero-md {
 
 /* Render tables so they don't force the entire page to overflow. Tables will
    keep their natural width and the container will show a horizontal scroll. */
-table {
+#summary-md-container table {
   display: block;       /* allow scrolling for wide tables */
   width: max-content;   /* keep columns from compressing */
   max-width: 100%;      /* don't exceed the container */
@@ -484,4 +484,10 @@ pre, code {
   overflow-x: auto;
   margin: 0 auto;
   display: block;
+}
+
+/* Like the examples: prevent wrapping so columns don’t grow vertically */
+table.dataTable thead th,
+table.dataTable tbody td {
+  white-space: nowrap;
 }
