@@ -260,14 +260,33 @@ function renderSmellsPerSeverity(data, svg, width, height) {
 }
 
 function renderSmellsPerCategory(data, svg, width, height) {
-  // Reinterpreted: group by individual Smell (column 'Smells') and count occurrences.
+  // Debug: log each call to detect double rendering
+  console.log('[renderSmellsPerCategory] called with', data.length, 'rows');
+
+  // Always clear SVG to prevent duplicate bars and sums
+  if (svg && typeof svg.selectAll === 'function') {
+    svg.selectAll('*').remove();
+  }
+
+  // Reinterpreted: group by individual Smell (column 'Smells') and count unique occurrences.
   const smellKey = normalizeKey(data[0], 'Smells');
   const severityKey = normalizeKey(data[0], 'Severity');
   // Filter out empty / blank smell values
-  const filtered = data.filter(d => {
+  let filtered = data.filter(d => {
     const val = (d[smellKey] || '').trim();
     return val.length > 0; 
   });
+
+  // Remove duplicate rows (by Smell + Severity; adjust key if more columns are relevant)
+  const seen = new Set();
+  filtered = filtered.filter(d => {
+    // You can adjust the key if more columns are relevant
+    const key = `${(d[smellKey]||'').trim()}|${(d[severityKey]||'').trim().toLowerCase()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
   if (filtered.length === 0) {
     svg.append('text')
       .attr('x', width/2)
