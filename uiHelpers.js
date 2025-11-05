@@ -73,8 +73,8 @@ export async function renderCommitsBarCharts() {
   // Render the charts
   const weekResp = await fetch('./files/details/commits_by_week.csv');
   const weekText = await weekResp.text();
-  const weekData = parseCSV(weekText).filter(d => d.weeks && d.commits);
-  const weekLabels = weekData.map(d => d.weeks);
+  const weekData = parseCSV(weekText).filter(d => d.week && d.commits);
+  const weekLabels = weekData.map(d => d.week);
   const weekValues = weekData.map(d => Number(d.commits));
   renderBarChart('#' + SELECTORS.weekBar, weekLabels, weekValues, 'Commits per Week', 'Week', 'Commits');
   const monthResp = await fetch('./files/details/commits_by_month.csv');
