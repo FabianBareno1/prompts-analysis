@@ -73,8 +73,8 @@ export async function renderCommitsBarCharts() {
   // Render the charts
   const weekResp = await fetch('./files/details/commits_by_week.csv');
   const weekText = await weekResp.text();
-  const weekData = parseCSV(weekText).filter(d => d.weeks && d.commits);
-  const weekLabels = weekData.map(d => d.weeks);
+  const weekData = parseCSV(weekText).filter(d => d.week && d.commits);
+  const weekLabels = weekData.map(d => d.week);
   const weekValues = weekData.map(d => Number(d.commits));
   renderBarChart('#' + SELECTORS.weekBar, weekLabels, weekValues, 'Commits per Week', 'Week', 'Commits');
   const monthResp = await fetch('./files/details/commits_by_month.csv');
@@ -251,8 +251,15 @@ export function renderModuleHeatmap({ modules, months, churnMatrix }) {
   const height = (container.node().clientHeight || 600) - margin.top - margin.bottom;
   const cellWidth = width / months.length;
   const cellHeight = height / modules.length;
-  const colorScale = d3.scaleSequential(d3.interpolateReds)
-    .domain([0, d3.max(churnMatrix.flat())]);
+  const maxChurn = d3.max(churnMatrix.flat());
+  const colorSteps = 5;
+  // Step values: 0, 1/49, 2/49, ..., 49/49 of maxChurn
+  const stepValues = Array.from({length: colorSteps}, (_, i) => i * maxChurn / (colorSteps - 1));
+  // Build color range: white for 0, then interpolate greens for the rest
+  const colorRange = ['#fff', ...Array.from({length: colorSteps - 1}, (_, i) => d3.interpolateGreens((i + 1) / (colorSteps - 1)))];
+  const colorScale = d3.scaleOrdinal()
+    .domain(stepValues)
+    .range(colorRange);
   const totalWidth = width + margin.left + margin.right;
   const totalHeight = height + margin.top + margin.bottom;
   const svg = container.append('svg')
@@ -287,13 +294,24 @@ export function renderModuleHeatmap({ modules, months, churnMatrix }) {
     .data((row, i) => row.map((d, j) => ({ churn: d, month: months[j], module: modules[i] })))
     .enter()
     .append('rect')
-    .attr('x', (d, j) => j * cellWidth)
-    .attr('width', cellWidth)
-    .attr('height', cellHeight)
-    .attr('fill', d => colorScale(d.churn))
+    .attr('x', (d, j) => j * cellWidth + 2) // 2px separation left
+    .attr('y', 2) // 2px separation top
+    .attr('width', cellWidth - 4) // 2px separation on each side
+    .attr('height', cellHeight - 4) // 2px separation on each side
+    .attr('rx', 6) // border radius horizontal
+    .attr('ry', 6) // border radius vertical
+    .attr('fill', d => {
+      if (maxChurn === 0 || d.churn === 0 || isNaN(d.churn)) return '#fff';
+      // Find closest step for churn value
+      for (let i = 0; i < stepValues.length; i++) {
+        if (d.churn <= stepValues[i]) return colorRange[i];
+      }
+      return colorRange[colorRange.length - 1];
+    })
     .on('mouseover', function(event, d) {
-      tooltip.style('display', 'block')
-        .html(`<b>Module:</b> ${d.module}<br><b>Month:</b> ${d.month}<br><b>Churn:</b> ${d.churn}`);
+        const churnValue = (d.churn === 0 || isNaN(d.churn)) ? 0 : d.churn;
+        tooltip.style('display', 'block')
+          .html(`<b>Module:</b> ${d.module}<br><b>Month:</b> ${d.month}<br><b>Churn:</b> ${churnValue}`);
       d3.select(this).attr('stroke', '#fff').attr('stroke-width', 2);
     })
     .on('mousemove', function(event) {
