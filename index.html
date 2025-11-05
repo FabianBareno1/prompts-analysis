@@ -7,8 +7,14 @@
   <title>Angular Audit</title>
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script type="module" src="https://cdn.jsdelivr.net/npm/zero-md@3?register"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.datatables.net/2.3.4/js/dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/fixedcolumns/5.0.5/js/dataTables.fixedColumns.min.js"></script>
+  <script src="https://cdn.datatables.net/fixedcolumns/5.0.5/js/fixedColumns.dataTables.min.js"></script>
   <link rel="stylesheet" href="./app-theme.css" />
-</head>
+  <link rel="stylesheet" href="https://cdn.datatables.net/2.3.4/css/dataTables.dataTables.min.css" />
+  <link rel="stylesheet" href="https://cdn.datatables.net/fixedcolumns/5.0.5/css/fixedColumns.dataTables.min.css" />
+  </head>
 
 <body>
   <div class="header-nav-row">
@@ -33,6 +39,12 @@
     </nav>
   </div>
   <main>
+    <div id="datatable-container">
+      <div id="dependencies-datatable">
+        <table id="dependencies-table" class="stripe row-border order-column nowrap">
+        </table>
+      </div>
+    </div>
     <div id="summary-md-container">
       <zero-md id="summary-md" style="display: block" src="">
         <template>
