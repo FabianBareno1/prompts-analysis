@@ -1,3 +1,5 @@
+import { clearError, updateSummaryMarkdown } from '../index.js';
+
 /**
  * Test Smells charts renderer.
  * Expected columns (case-insensitive): Module, Severity, Category
