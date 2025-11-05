@@ -40,9 +40,29 @@
   </div>
   <main>
     <div id="summary-md-container">
-      <zero-md id="summary-md" style="display: block" src="">
+  <zero-md id="summary-md" style="display: block" src="" data-theme="dark">
         <template>
+          <link rel="stylesheet" href="./github-markdown.css" />
           <link rel="stylesheet" href="./app-theme.css" />
+          <style>
+            .markdown-body {
+              box-sizing: border-box;
+              min-width: 200px;
+              max-width: 980px;
+              margin: 0 auto;
+              padding: 32px;
+              background: #0d1117 !important;
+              color: #e6edf3 !important;
+            }
+            .markdown-body table,
+            .markdown-body tr,
+            .markdown-body th,
+            .markdown-body td {
+              background: #161b22 !important;
+              color: #e6edf3 !important;
+              border-color: #30363d !important;
+            }
+          </style>
         </template>
       </zero-md>
     </div>
