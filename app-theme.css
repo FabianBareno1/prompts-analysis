@@ -3,27 +3,7 @@ option {
   color: var(--color-secondary);
 }
 @media (max-width: 860px) {
-  .file-upload-group {
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: var(--space-md) !important;
-    width: 100%;
-    padding: var(--space-md) var(--space-xs);
-    margin-bottom: 1em;
-    max-width: 21.25em;
-    margin-left: auto;
-    margin-right: auto;
-  }
-  .file-upload-group label {
-    font-size: var(--font-size-md) !important;
-    margin-bottom: var(--space-xs) !important;
-    width: 100%;
-    text-align: center;
-    box-sizing: border-box;
-  }
-  .file-upload-btn,
-  .advanced-btn,
-  .file-upload-group select {
+  .advanced-btn {
     width: 100% !important;
     min-width: 0 !important;
     max-width: 100% !important;
@@ -34,14 +14,7 @@ option {
     box-sizing: border-box;
     height: 2.5em;
     text-align: left;
-  }
-  .advanced-btn {
     padding-left: var(--space-lg) !important;
-    height: 2.5em !important;
-  }
-  .file-upload-icon {
-    font-size: 1.2em;
-    margin-right: 0.4em;
   }
 }
 :root {
@@ -89,7 +62,7 @@ select {
   color: var(--color-secondary);
   border-color: var(--color-primary);
 }
-select {
+.chart-type-dropdown {
   background: var(--color-bg);
   color: var(--color-secondary);
   border: 1px solid var(--color-border);
@@ -100,41 +73,13 @@ select {
   height: 2.5em;
   margin-left: 1em;
   transition: background 0.2s, border 0.2s, color 0.2s;
+  display: inline-block;
 }
-select:focus,
-select:hover {
+.chart-type-dropdown:focus,
+.chart-type-dropdown:hover {
   background: var(--color-bg-light);
   color: var(--color-secondary);
   border-color: var(--color-primary);
-}
-.file-upload-btn {
-  background: var(--color-bg);
-  color: var(--color-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  padding: var(--space-sm) var(--space-xl);
-  font-size: var(--font-size-base);
-  min-width: 12.5em;
-  max-width: 340px;
-  height: 2.5em;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-  box-shadow: none;
-  transition: background 0.2s, border 0.2s;
-  position: relative;
-  z-index: 2;
-}
-.file-upload-btn:hover,
-.file-upload-btn:focus {
-  background: var(--color-bg-light);
-  color: var(--color-secondary);
-  border-color: var(--color-primary);
-}
-.file-upload-icon {
-  font-size: 1.15em;
-  margin-right: 0.2em;
 }
 :host {
   background: var(--color-bg);
@@ -425,56 +370,7 @@ pre, code {
     font-size: var(--font-size-md);
     padding: var(--space-md) var(--space-xs);
   }
-  .file-upload-group {
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: var(--space-md) !important;
-    width: 100%;
-    padding: var(--space-sm) var(--space-xs);
-    margin-bottom: 1em;
-    max-width: 21.25em;
-    margin-left: auto;
-    margin-right: auto;
-  }
-  .file-upload-group label {
-    font-size: var(--font-size-md) !important;
-    margin-bottom: var(--space-xs) !important;
-    width: 100%;
-    text-align: center;
-    box-sizing: border-box;
-  }
-  .file-upload-btn,
-  .advanced-btn {
-    width: 100%;
-    min-width: 0;
-    max-width: 21.25em;
-    font-size: var(--font-size-md);
-    padding: var(--space-md) var(--space-lg);
-    margin-left: auto !important;
-    margin-right: auto !important;
-    box-sizing: border-box;
-  }
-  .file-upload-group select {
-    width: 100%;
-    min-width: 0;
-    max-width: 21.25em;
-    font-size: var(--font-size-md);
-    padding: var(--space-md) var(--space-lg);
-    height: 2.5em;
-    margin-left: auto !important;
-    margin-right: auto !important;
-    box-sizing: border-box;
-  }
-  .advanced-btn {
-    text-align: left;
-    padding-left: var(--space-lg);
-    font-size: var(--font-size-md);
-    height: 2.5em !important;
-  }
-  .file-upload-icon {
-    font-size: 1.2em;
-    margin-right: 0.4em;
-  }
+
 }
 
 #heatmap-container {
