@@ -99,10 +99,11 @@ export function updateSummaryMarkdown(type) {
   let mdPath = '';
   if (type === 'code-coverage') mdPath = 'files/summaries/CodeCoverageSummary.md';
   else if (type === 'test-smells') mdPath = 'files/summaries/TestSmellsSummary.md';
+  else if (type === 'security-posture') mdPath = 'files/summaries/SecurityPostureSummary.md';
   else if (type === 'semantic-bug-detection') mdPath = 'files/summaries/SemanticBugDetectionSummary.md';
   // Do not show markdown for regression-risk
   summaryMd.setAttribute('src', mdPath);
-  if (type === 'regression-risk'  || type === 'security-posture') {
+  if (type === 'regression-risk') {
     summaryMd.style.display = 'none';
     const summaryContainer = document.getElementById('summary-md-container');
     if (summaryContainer) summaryContainer.style.display = 'none';
