@@ -1,4 +1,5 @@
 import { hideAllChartTypeSelectors } from './uiHelpers.js';
+import { hideHeatmap, hideCommitsBarCharts } from './uiHelpers.js';
 const SECTIONS = ['code-coverage', 'test-smells', 'security-posture', 'semantic-bug-detection'];
 
 
@@ -45,6 +46,9 @@ Object.keys(advancedBtns).forEach(type => {
 const buttons = document.querySelectorAll('nav button');
 buttons.forEach(btn => {
 	btn.addEventListener('click', () => {
+        hideHeatmap();
+        hideCommitsBarCharts();
+
 		buttons.forEach(b => {
 			b.classList.remove('active');
 			b.setAttribute('aria-pressed', 'false');
