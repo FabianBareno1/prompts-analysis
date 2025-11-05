@@ -1,14 +1,11 @@
-import { hideAllChartTypeSelectors } from './uiHelpers.js';
 import { hideHeatmap, hideCommitsBarCharts } from './uiHelpers.js';
-const SECTIONS = ['code-coverage', 'test-smells', 'security-posture', 'semantic-bug-detection'];
-
-
 import {
-	parseCSVFile,
-	tryLoadServerCSV,
-	loadData,
-	updateChartTypeSelectorVisibility
+  tryLoadServerCSV,
+  loadData,
+  updateChartTypeSelectorVisibility
 } from './index.js';
+
+const SECTIONS = ['code-coverage', 'test-smells', 'security-posture', 'semantic-bug-detection'];
 
 const chartTypeSelectors = {};
 SECTIONS.forEach(type => {
@@ -17,31 +14,22 @@ SECTIONS.forEach(type => {
 // Only expose chartTypeSelectors globally for dashboard.js compatibility
 window.chartTypeSelectors = chartTypeSelectors;
 
-const fileInputs = {};
-SECTIONS.forEach(type => {
-	fileInputs[type] = document.getElementById(`${type}-file`);
-});
-
-export function showFileInputForSection(section) {
-	// Show only the selected section's file input
+export function showAdvancedOptionsForSection(section) {
+	// Show only the selected section's advanced options
 	SECTIONS.forEach(type => {
-		document.getElementById(type + '-upload').style.display = (type === section) ? 'flex' : 'none';
+		const group = document.getElementById(type + '-upload');
+		if (group) group.style.display = (type === section) ? 'flex' : 'none';
+		// Always show chart type selector for the active section
+		if (chartTypeSelectors[type]) {
+			chartTypeSelectors[type].style.display = (type === section) ? 'inline-block' : 'none';
+			chartTypeSelectors[type].style.float = (type === section) ? 'right' : '';
+			chartTypeSelectors[type].style.marginLeft = (type === section) ? 'auto' : '';
+		}
 	});
-	// Hide all chart type selectors using helper
-	hideAllChartTypeSelectors(chartTypeSelectors);
 }
-// Only expose showFileInputForSection globally for dashboard.js compatibility
-window.showFileInputForSection = showFileInputForSection;
+window.showAdvancedOptionsForSection = showAdvancedOptionsForSection;
 
-const advancedBtns = {};
-SECTIONS.forEach(type => {
-	advancedBtns[type] = document.getElementById(`${type}-advanced-btn`);
-});
-Object.keys(advancedBtns).forEach(type => {
-	advancedBtns[type].addEventListener('click', () => {
-		chartTypeSelectors[type].style.display = (chartTypeSelectors[type].style.display === 'block') ? 'none' : 'block';
-	});
-});
+
 
 const buttons = document.querySelectorAll('nav button');
 buttons.forEach(btn => {
@@ -55,20 +43,14 @@ buttons.forEach(btn => {
 		});
 		btn.classList.add('active');
 		btn.setAttribute('aria-pressed', 'true');
-		showFileInputForSection(btn.id);
+	showAdvancedOptionsForSection(btn.id);
 		updateChartTypeSelectorVisibility();
 		const chartType = (chartTypeSelectors[btn.id] && chartTypeSelectors[btn.id].value) ? chartTypeSelectors[btn.id].value : undefined;
 		loadData(btn.id, chartType);
 	});
 });
 
-Object.keys(fileInputs).forEach(type => {
-	fileInputs[type].addEventListener('change', (e) => {
-		const file = e.target.files[0];
-		const chartType = (chartTypeSelectors[type] && chartTypeSelectors[type].value) ? chartTypeSelectors[type].value : undefined;
-		parseCSVFile(file, type, chartType);
-	});
-});
+// No file input logic needed
 
 Object.keys(chartTypeSelectors).forEach(type => {
 	chartTypeSelectors[type].addEventListener('change', () => {
@@ -79,5 +61,5 @@ Object.keys(chartTypeSelectors).forEach(type => {
 	});
 });
 
-showFileInputForSection('code-coverage');
+showAdvancedOptionsForSection('code-coverage');
 tryLoadServerCSV('code-coverage');

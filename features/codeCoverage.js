@@ -1,10 +1,11 @@
-import { chart, showError, clearError, updateSummaryMarkdown } from '../index.js';
+import { chart, showError, updateSummaryMarkdown } from '../index.js';
 
 
 export function renderCodeCoverageChart(data, chartType) {
 
   updateSummaryMarkdown('code-coverage');
-  
+  chart.selectAll('*').remove();
+
   // Get chart area size for custom charts
   const chartArea = document.getElementById('chart-area');
   const width = chartArea ? chartArea.clientWidth - 40 : 600;
