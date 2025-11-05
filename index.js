@@ -411,7 +411,7 @@ export function updateChartTypeSelectorVisibility() {
       { value: 'lollipop', label: 'Test Coverage Distribution (Lollipop)' }
     ],
     'test-smells': [
-      { value: 'module', label: 'Smells per Module' },
+      { value: 'module', label: 'Smells per Module and Severity' },
       { value: 'severity', label: 'Smells per Severity' },
       { value: 'category', label: 'Smells per Category' }
     ],
