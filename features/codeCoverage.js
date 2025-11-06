@@ -1,11 +1,12 @@
 import { chart, showError, updateSummaryMarkdown } from '../index.js';
+import { drawBarChart } from '../chartHelpers.js';
+import { renderLegendHTML, LEGEND_SEVERITY_OPTIONS } from '../uiHelpers.js';
 
 
 export function renderCodeCoverageChart(data, chartType) {
 
   updateSummaryMarkdown('code-coverage');
   chart.selectAll('*').remove();
-
   // Get chart area size for custom charts
   const chartArea = document.getElementById('chart-area');
   const width = chartArea ? chartArea.clientWidth - 40 : 600;
@@ -211,12 +212,12 @@ export function renderCoverageLollipopByModule(data, chart, width, height) {
 
 // Chart: Severity on X, count of modules on Y
 export function renderSeverityByModuleChart(data, chart, width, height) {
-  // Bar chart: number of modules per severity
+  // Bar chart: number of modules per severity using drawBarChart
   const agg = aggregateModulesWithSeverity(data);
-  // Count modules per severity
-  const severityCounts = d3.rollup(agg, v => v.length, d => d.Severity);
   const severities = ['High', 'Medium', 'Low'];
-  const counts = severities.map(sev => severityCounts.get(sev) || 0);
+  const severityCounts = d3.rollup(agg, v => v.length, d => d.Severity);
+  const labels = severities;
+  const values = severities.map(sev => severityCounts.get(sev) || 0);
   // Color scale by severity
   const severityColor = severity => {
     if (severity === 'High') return '#ef4444';
@@ -224,175 +225,44 @@ export function renderSeverityByModuleChart(data, chart, width, height) {
     if (severity === 'Low') return '#22c55e';
     return '#a1a1aa';
   };
-  // Draw bar chart
-  const margin = { top: 40, right: 30, bottom: 60, left: 60 };
-  const w = width - margin.left - margin.right;
-  const h = height - margin.top - margin.bottom;
-  const g = chart.append('g').attr('transform', `translate(${margin.left},${margin.top + 18})`);
-  const x = d3.scaleBand().domain(severities).range([0, w]).padding(0.2);
-  const y = d3.scaleLinear().domain([0, d3.max(counts)]).nice().range([h, 0]);
-  // X axis
-  g.append('g')
-    .attr('class', 'x-axis')
-    .attr('transform', `translate(0,${h})`)
-    .call(d3.axisBottom(x))
-    .selectAll('text')
-    .attr('fill', '#e5e7eb')
-    .attr('font-size', '1rem')
-    .style('text-anchor', 'middle');
-  // Y axis
-  g.append('g')
-    .attr('class', 'y-axis')
-    .call(d3.axisLeft(y).ticks(6))
-    .selectAll('text')
-    .attr('fill', '#e5e7eb')
-    .attr('font-size', '1rem');
-  // Bars
-  g.selectAll('.bar')
-    .data(severities)
-    .enter()
-    .append('rect')
-    .attr('class', 'bar')
-    .attr('x', d => x(d))
-    .attr('y', (d, i) => y(counts[i]))
-    .attr('width', x.bandwidth())
-    .attr('height', (d, i) => h - y(counts[i]))
-    .attr('fill', d => severityColor(d));
-  // Value labels
-  g.selectAll('.label')
-    .data(severities)
-    .enter()
-    .append('text')
-    .attr('x', d => x(d) + x.bandwidth() / 2)
-    .attr('y', (d, i) => y(counts[i]) - 6)
-    .attr('text-anchor', 'middle')
-    .attr('fill', '#e5e7eb')
-    .attr('font-size', '0.95rem')
-    .text((d, i) => counts[i]);
-  // Chart title
-  chart.append('text')
-    .attr('x', width / 2)
-    .attr('y', margin.top / 2)
-    .attr('text-anchor', 'middle')
-    .attr('fill', '#e5e7eb')
-    .attr('font-size', '1.3rem')
-    .text('Modules per Severity');
+  const colorScale = i => severityColor(labels[i]);
+  drawBarChart(chart, labels, values, width, height, colorScale, 'Modules per Severity', 'Severity', 'Modules', true);
 }
 
 export function renderCoveragePerModule(data, chart, width, height) {    
-    // Bar chart: coverage (lines%) by module, colored by severity
-    let agg = aggregateModulesWithSeverity(data);
-    const linesKey = agg.length > 0 ? getLinesKey(agg[0]) : null;
-    if (linesKey) agg = agg.sort((a, b) => (a[linesKey] || 0) - (b[linesKey] || 0));
-    agg = groupZeroCoverageModules(agg, linesKey);
-    const labelFn = disambiguateLabels(agg);
-    // Color scale by severity
-    const severityColor = severity => {
-      if (severity === 'High') return '#ef4444'; // red
-      if (severity === 'Medium') return '#f59e42'; // orange
-      if (severity === 'Low') return '#22c55e'; // green
-      return '#a1a1aa'; // gray fallback
-    };
-    // Draw custom bar chart with colored bars
-    const margin = { top: 40, right: 30, bottom: 60, left: 60 };
-    const w = width - margin.left - margin.right;
-    const h = height - margin.top - margin.bottom;
-    const g = chart.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
-    const x = d3.scaleBand().domain(agg.map(labelFn)).range([0, w]).padding(0.2);
-    const y = d3.scaleLinear().domain([0, 100]).nice().range([h, 0]);
 
-    // X axis
-    g.append('g')
-      .attr('class', 'x-axis')
-      .attr('transform', `translate(0,${h})`)
-      .call(d3.axisBottom(x))
-      .selectAll('text')
-      .attr('fill', '#e5e7eb')
-      .attr('font-size', '1rem')
-      .attr('transform', 'rotate(-25)')
-      .style('text-anchor', 'end');
-    // Y axis
-    g.append('g')
-      .attr('class', 'y-axis')
-      .call(d3.axisLeft(y).ticks(6))
-      .selectAll('text')
-      .attr('fill', '#e5e7eb')
-      .attr('font-size', '1rem');
-
-    // Bars
-    g.selectAll('.bar')
-      .data(agg)
-      .enter()
-      .append('rect')
-      .attr('class', 'bar')
-      .attr('x', d => x(labelFn(d)))
-      .attr('y', d => y(linesKey ? d[linesKey] : 0))
-      .attr('width', x.bandwidth())
-      .attr('height', d => h - y(linesKey ? d[linesKey] : 0))
-      .attr('fill', d => severityColor(d.Severity));
-
-    // Value labels
-    g.selectAll('.label')
-      .data(agg)
-      .enter()
-      .append('text')
-      .attr('x', d => x(labelFn(d)) + x.bandwidth() / 2)
-      .attr('y', d => y(linesKey ? d[linesKey] : 0) - 6)
-      .attr('text-anchor', 'middle')
-      .attr('fill', '#e5e7eb')
-      .attr('font-size', '0.95rem')
-      .text(d => linesKey && d[linesKey] != null ? d[linesKey].toFixed(1) + '%' : '');
-    // Chart title 
-    chart.append('text')
-      .attr('x', width / 2)
-      .attr('y', margin.top / 2)
-      .attr('text-anchor', 'middle')
-      .attr('fill', '#e5e7eb')
-      .attr('font-size', '1.3rem')
-      .text('Coverage (lines%) by Module');
-
-    // Add extra space below the title
-    g.attr('transform', `translate(${margin.left},${margin.top + 18})`);
-
-    // Add severity legend below the chart, centered, and not overlapping x-axis labels
-    const legendData = [
-      { label: 'High', color: '#ef4444' },
-      { label: 'Medium', color: '#f59e42' },
-      { label: 'Low', color: '#22c55e' }
-    ];
-    const legendItemWidth = 90;
-    const legendItemHeight = 20;
-    const legendBoxWidth = legendData.length * legendItemWidth;
-    const legendX = (width - legendBoxWidth) / 2;
-    const legendY = height + 30;
-    const legend = chart.append('g')
-      .attr('class', 'legend')
-      .attr('transform', `translate(${legendX},${legendY})`);
-    legend.selectAll('g.legend-item')
-      .data(legendData)
-      .enter()
-      .append('g')
-      .attr('class', 'legend-item')
-      .attr('transform', (d, i) => `translate(${i * legendItemWidth},0)`)
-      .each(function(d, i) {
-        d3.select(this)
-          .append('rect')
-          .attr('x', 0)
-          .attr('y', 0)
-          .attr('width', 16)
-          .attr('height', 16)
-          .attr('fill', d.color);
-        d3.select(this)
-          .append('text')
-          .attr('x', 24)
-          .attr('y', 12)
-          .attr('fill', '#e5e7eb')
-          .attr('font-size', '1rem')
-          .attr('alignment-baseline', 'middle')
-          .text(d.label);
-      });
-    // Chart area stays the same
-    g.attr('transform', `translate(${margin.left},${margin.top + 18})`);
-  }
-
-
+  // Bar chart: coverage (lines%) by module, colored by severity, using drawBarChart for layout and axes
+  let agg = aggregateModulesWithSeverity(data);
+  const linesKey = agg.length > 0 ? getLinesKey(agg[0]) : null;
+  if (linesKey) agg = agg.sort((a, b) => (a[linesKey] || 0) - (b[linesKey] || 0));
+  agg = groupZeroCoverageModules(agg, linesKey);
+  const labelFn = disambiguateLabels(agg);
+  const labels = agg.map(labelFn);
+  const values = agg.map(d => linesKey ? d[linesKey] : 0);
+  // Color by severity
+  const severityColor = severity => {
+    if (severity === 'High') return '#ef4444';
+    if (severity === 'Medium') return '#f59e42';
+    if (severity === 'Low') return '#22c55e';
+    return '#a1a1aa';
+  };
+  // Color scale that respects the order of agg
+  const colorScale = i => severityColor(agg[i].Severity);
+  // Use drawBarChart for layout, axes, and value labels (as percentages)
+  drawBarChart(
+    chart,
+    labels,
+    values,
+    width,
+    height,
+    colorScale,
+    'Coverage (lines%) by Module',
+    'Module',
+    'Coverage',
+    true,
+    v => (typeof v === 'number' && !isNaN(v) ? v.toFixed(1) + '%' : ''),
+    (d, xLabel, yLabel) => `<b>${xLabel}:</b> ${d.label}<br><b>${yLabel}:</b> ${typeof d.value === 'number' && !isNaN(d.value) ? d.value.toFixed(1) + '%' : d.value}`
+  );
+  // Render legend como HTML debajo del gráfico, después de renderizar el SVG
+  renderLegendHTML(LEGEND_SEVERITY_OPTIONS);
+}

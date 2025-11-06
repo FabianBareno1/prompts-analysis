@@ -1,4 +1,64 @@
-/**
+export const LEGEND_SEVERITY_OPTIONS = {
+  legendId: 'legend',
+  legendData: [
+    { label: 'High', color: '#ef4444' },
+    { label: 'Medium', color: '#f59e42' },
+    { label: 'Low', color: '#22c55e' }
+  ],
+  chartAreaId: 'chart-area',
+  margin: '-30px 0 0 0',
+  padding: '0 0 10px 0'
+};
+
+export function renderLegendHTML({ legendId, legendData, chartAreaId, margin = '-30px 0 0 0', padding = '0 0 10px 0' }) {
+  setTimeout(() => {
+    let legendDiv = document.getElementById(legendId);
+    const chartArea = document.getElementById(chartAreaId);
+    if (!legendDiv) {
+      legendDiv = document.createElement('div');
+      legendDiv.id = legendId;
+      legendDiv.style.display = 'flex';
+      legendDiv.style.justifyContent = 'center';
+      legendDiv.style.gap = '1.5rem';
+      legendDiv.style.margin = margin;
+      legendDiv.style.padding = padding;
+      if (chartArea) {
+        chartArea.appendChild(legendDiv);
+      } else {
+        document.body.appendChild(legendDiv);
+      }
+    } else {
+      legendDiv.innerHTML = '';
+      if (chartArea && legendDiv.parentNode !== chartArea) {
+        chartArea.appendChild(legendDiv);
+      }
+    }
+    while (legendDiv.firstChild) legendDiv.removeChild(legendDiv.firstChild);
+    legendData.forEach(item => {
+      const itemSpan = document.createElement('span');
+      itemSpan.style.display = 'flex';
+      itemSpan.style.alignItems = 'center';
+      itemSpan.style.gap = '0.5em';
+      itemSpan.style.fontSize = '1rem';
+
+      const colorBox = document.createElement('span');
+      colorBox.style.display = 'inline-block';
+      colorBox.style.width = '16px';
+      colorBox.style.height = '16px';
+      colorBox.style.background = item.color;
+      colorBox.style.borderRadius = '3px';
+      colorBox.style.marginRight = '2px';
+
+      const labelSpan = document.createElement('span');
+      labelSpan.style.color = '#e5e7eb';
+      labelSpan.textContent = item.label;
+
+      itemSpan.appendChild(colorBox);
+      itemSpan.appendChild(labelSpan);
+      legendDiv.appendChild(itemSpan);
+    });
+  }, 0);
+}/**
  * Renders the heatmap for Regression Risk section.
  */
 export function renderHeatmap() {

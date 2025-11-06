@@ -267,7 +267,7 @@ export function drawNestedPieChart(chart, data, width, height, colorScale, title
 }
 // Common chart rendering and aggregation helpers for all dashboard sections
 
-export function drawBarChart(chart, labels, values, width, height, colorScale, title, xLabel, yLabel) {
+export function drawBarChart(chart, labels, values, width, height, colorScale, title, xLabel, yLabel, showValueLabels = true, valueLabelFormatter, tooltipFormatter = undefined) {
   if (!width || !height) {
     const bounds = chart.node().getBoundingClientRect();
     width = bounds.width || 650;
@@ -278,11 +278,11 @@ export function drawBarChart(chart, labels, values, width, height, colorScale, t
   if (width < 500) {
     height = Math.max(height, 400);
     let extraBottom = labels.length > 12 ? 28 : 0;
-    margin = { top: 18, right: 10, bottom: 100 + extraBottom, left: 10 };
+    margin = { top: 100, right: 10, bottom: 100 + extraBottom, left: 10 };
   } else if (width < 700) {
-    margin = { top: 28, right: 18, bottom: 150, left: 38 };
+    margin = { top: 80, right: 18, bottom: 150, left: 38 };
   } else {
-    margin = { top: 40, right: 30, bottom: 100, left: 60 };
+    margin = { top: 80, right: 30, bottom: 120, left: 60 };
   }
 
   chart.selectAll('svg').remove();
@@ -357,7 +357,7 @@ export function drawBarChart(chart, labels, values, width, height, colorScale, t
     .attr('fill', (d, i) => colorScale(i))
     .on('mouseover', function(event, d) {
       tooltip.style('display', 'block')
-        .html(`<b>${xLabel}:</b> ${d.label}<br><b>${yLabel}:</b> ${d.value}`);
+        .html(tooltipFormatter ? tooltipFormatter(d, xLabel, yLabel) : `<b>${xLabel}:</b> ${d.label}<br><b>${yLabel}:</b> ${d.value}`);
       d3.select(this).attr('opacity', 0.8);
     })
     .on('mousemove', function(event) {
@@ -370,17 +370,18 @@ export function drawBarChart(chart, labels, values, width, height, colorScale, t
     });
 
   // Value labels
-  g.selectAll('.label')
-    .data(labels.map((d, i) => ({ label: d, value: values[i] })))
-    .enter()
-    .append('text')
-    .attr('x', d => x(d.label) + x.bandwidth() / 2)
-    .attr('y', d => y(d.value) - 6)
-    .attr('text-anchor', 'middle')
-    .attr('fill', '#e5e7eb')
-    .attr('font-size', width < 500 ? '0.65rem' : width < 700 ? '0.8rem' : '0.9rem')
-    .text(d => d.value);
-
+  if (showValueLabels) {
+    g.selectAll('.label')
+      .data(labels.map((d, i) => ({ label: d, value: values[i] })))
+      .enter()
+      .append('text')
+      .attr('x', d => x(d.label) + x.bandwidth() / 2)
+      .attr('y', d => y(d.value) - 6)
+      .attr('text-anchor', 'middle')
+      .attr('fill', '#e5e7eb')
+      .attr('font-size', width < 500 ? '0.65rem' : width < 700 ? '0.8rem' : '0.9rem')
+      .text(d => valueLabelFormatter ? valueLabelFormatter(d.value) : d.value);
+  }
   // Chart title
   svg.append('text')
     .attr('x', width / 2)
