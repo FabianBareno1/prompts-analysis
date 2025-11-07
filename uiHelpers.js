@@ -267,6 +267,13 @@ export function renderModuleHeatmap({ modules, months, churnMatrix }) {
     .attr('height', '100%')
     .attr('viewBox', `0 0 ${totalWidth} ${totalHeight}`)
     .attr('preserveAspectRatio', 'xMidYMid meet');
+  svg.append('text')
+    .attr('x', totalWidth / 2)
+    .attr('y', margin.top / 2)
+    .attr('text-anchor', 'middle')
+    .attr('fill', '#e5e7eb')
+    .attr('font-size', '1.1rem')
+    .text('Git Activity');
   const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
   // Tooltip visual
   let tooltip = d3.select('body').select('.heatmap-tooltip');

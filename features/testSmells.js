@@ -1,10 +1,15 @@
+import { clearError, updateSummaryMarkdown } from '../index.js';
+
 /**
  * Test Smells charts renderer.
  * Expected columns (case-insensitive): Module, Severity, Category
  */
 export function renderTestSmellsChart(data, chartType) {
+  if (typeof updateSummaryMarkdown === 'function') updateSummaryMarkdown('test-smells');
+  if (typeof clearError === 'function') clearError();
   const svg = d3.select('#chart');
   svg.selectAll('*').remove();
+  svg.style('display', 'block');
   const chartArea = document.getElementById('chart-area');
   const width = chartArea ? chartArea.clientWidth - 40 : 800;
   const height = chartArea ? chartArea.clientHeight - 60 : 420;
