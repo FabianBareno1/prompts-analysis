@@ -10,6 +10,10 @@ export const LEGEND_SEVERITY_OPTIONS = {
   padding: '0 0 10px 0'
 };
 
+export function truncateLabel(label, maxLen = 18) {
+  return label.length > maxLen ? label.slice(0, maxLen - 1) + '…' : label;
+}
+
 export function renderLegendHTML({ legendId, legendData, chartAreaId, margin = '-30px 0 0 0', padding = '0 0 10px 0' }) {
   setTimeout(() => {
     let legendDiv = document.getElementById(legendId);

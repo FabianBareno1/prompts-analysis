@@ -296,6 +296,10 @@ pre, code {
   min-height: 450px;
   box-sizing: border-box;
 }
+.pie-label-size {
+  font-size: 1.25rem;
+  font-weight: bold;
+}
 .loader {
   border: 0.25em solid var(--color-border);
   border-top: 0.25em solid var(--color-primary);
@@ -381,6 +385,9 @@ pre, code {
     flex-direction: column;
     gap: var(--space-md);
     min-height: 5em;
+  }
+  .pie-label-size {
+    font-size: 0.8rem;
   }
 }
 @media (max-width: 600px) {
