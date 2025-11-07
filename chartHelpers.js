@@ -8,144 +8,7 @@
  * @param {string} title - Chart title.
  */
 
-export function drawGroupedBarChart(chart, data, width, height, colorScale, title) {
-  chart.selectAll('svg').remove();
-  if (!width || !height) {
-    const bounds = chart.node().getBoundingClientRect();
-    width = bounds.width || 650;
-    height = bounds.height || 600;
-  }
-  // Aggregate counts by category and subcategory
-  const nested = d3.rollups(
-    data,
-    v => v.length,
-    d => d.Category,
-    d => d.Subcategory
-  );
-  const categories = nested.map(([cat]) => cat);
-  // Only include subcategories that have at least one value in any category
-  const subcategories = Array.from(new Set(
-    nested.flatMap(([cat, subcats]) => subcats.filter(([subcat, count]) => count > 0).map(([subcat]) => subcat))
-  ));
-  // Build data for grouped bars, only for subcategories with value > 0
-  const barData = categories.map(cat => {
-    const subcatMap = new Map(nested.find(([c]) => c === cat)[1]);
-    return {
-      category: cat,
-      values: subcategories.map(subcat => ({
-        subcategory: subcat,
-        value: subcatMap.get(subcat) || 0
-      })).filter(d => d.value > 0)
-    };
-  });
 
-  // Reduce chart width to leave space for vertical legend
-  const legendWidth = 180;
-  // Increase right margin to further narrow the chart area
-  const margin = { top: 50, right: legendWidth + 80, bottom: 100, left: 60 };
-  const w = width - margin.left - margin.right;
-  const h = height - margin.top - margin.bottom;
-  const svg = chart.append('svg')
-    .attr('width', '100%')
-    .attr('height', '100%')
-    .attr('viewBox', `0 0 ${width} ${height}`)
-    .attr('preserveAspectRatio', 'xMidYMid meet');
-  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
-
-  // Increase padding for few categories to center bars
-  const x0 = d3.scaleBand()
-    .domain(categories)
-    .range([0, w])
-    .paddingInner(categories.length <= 2 ? 0.45 : 0.18);
-  // x1 only for subcategories with value > 0
-  const x1 = d3.scaleBand()
-    .domain(subcategories)
-    .range([0, x0.bandwidth()])
-    .padding(0.12);
-  const y = d3.scaleLinear()
-    .domain([0, d3.max(barData, d => d3.max(d.values, v => v.value)) || 1])
-    .nice()
-    .range([h, 0]);
-
-  // Bars
-  g.selectAll('g.category')
-    .data(barData)
-    .enter()
-    .append('g')
-    .attr('class', 'category')
-    .attr('transform', d => `translate(${x0(d.category)},0)`)
-    .selectAll('rect')
-    .data(d => d.values)
-    .enter()
-    .append('rect')
-    .attr('x', d => x1(d.subcategory))
-    .attr('y', d => y(d.value))
-    .attr('width', x1.bandwidth())
-    .attr('height', d => h - y(d.value))
-    .attr('fill', d => colorScale(d.subcategory))
-    .attr('opacity', 0.92);
-
-  // Value labels
-  g.selectAll('g.category')
-    .selectAll('text.bar-label')
-    .data(d => d.values)
-    .enter()
-    .append('text')
-    .attr('class', 'bar-label')
-    .attr('x', d => x1(d.subcategory) + x1.bandwidth() / 2)
-    .attr('y', d => y(d.value) - 4)
-    .attr('text-anchor', 'middle')
-    .attr('fill', '#e5e7eb')
-    .attr('font-size', width < 500 ? '0.65rem' : width < 700 ? '0.8rem' : '0.9rem')
-    .text(d => d.value > 0 ? d.value : '');
-
-  // X axis (category names centered under grouped bars, horizontal)
-  g.append('g')
-    .attr('class', 'x-axis')
-    .attr('transform', `translate(0,${h})`)
-    .call(d3.axisBottom(x0))
-    .selectAll('text')
-    .attr('fill', '#e5e7eb')
-    .attr('font-size', width < 500 ? '0.7rem' : width < 700 ? '0.85rem' : '0.95rem')
-    .attr('transform', null)
-    .style('text-anchor', 'middle');
-
-  // Y axis
-  g.append('g')
-    .attr('class', 'y-axis')
-    .call(d3.axisLeft(y).ticks(6))
-    .selectAll('text')
-    .attr('fill', '#e5e7eb')
-    .attr('font-size', width < 500 ? '0.7rem' : width < 700 ? '0.85rem' : '0.95rem');
-
-  // Chart title
-  svg.append('text')
-    .attr('x', width / 2)
-    .attr('y', margin.top / 2)
-    .attr('text-anchor', 'middle')
-    .attr('fill', '#e5e7eb')
-    .attr('font-size', width < 500 ? '0.9rem' : width < 700 ? '1rem' : '1.1rem')
-    .text(title);
-
-  // Legend as a vertical column on the right
-  const legend = svg.append('g')
-    .attr('class', 'legend')
-    .attr('transform', `translate(${width - legendWidth + 10},${margin.top})`);
-  subcategories.forEach((subcat, i) => {
-    legend.append('rect')
-      .attr('x', 0)
-      .attr('y', i * 28)
-      .attr('width', 18)
-      .attr('height', 18)
-      .attr('fill', colorScale(subcat));
-    legend.append('text')
-      .attr('x', 26)
-      .attr('y', i * 28 + 13)
-      .attr('fill', '#e5e7eb')
-      .attr('font-size', '0.95rem')
-      .text(subcat);
-  });
-}
 /**
  * Draws a two-level donut chart (category and subcategory).
  * @param {d3.Selection} chart - D3 selection of the container.
@@ -491,3 +354,172 @@ export function aggregateByColumn(data, column, filterEmpty = false) {
     );
   }
 }
+
+/**
+ * Draws a stacked bar chart by category/subcategory.
+ * @param {d3.Selection} chart - D3 selection of the container.
+ * @param {Array<Object>} data - Original CSV data.
+ * @param {number} width - Chart width.
+ * @param {number} height - Chart height.
+ * @param {d3.ScaleOrdinal} colorScale - D3 color scale.
+ * @param {string} title - Chart title.
+ */
+export function drawStackedBarChart(chart, data, width, height, colorScale, title) {
+  console.log('[StackedBar] Datos recibidos:', data);
+  if (!Array.isArray(data) || data.length === 0) {
+    console.warn('[StackedBar] No hay datos para graficar');
+  }
+  if (!data[0] || !('Category' in data[0]) || !('Subcategory' in data[0])) {
+    console.warn('[StackedBar] Faltan columnas Category/Subcategory en los datos:', data[0]);
+  }
+  console.log('[StackedBar] chart:', chart);
+  console.log('[StackedBar] width/height:', width, height);
+    chart.selectAll('svg').remove();
+    console.log('[StackedBar] SVG removido, creando nuevo...');
+    if (!width || !height) {
+      const bounds = chart.node().getBoundingClientRect();
+      width = bounds.width || 650;
+      height = bounds.height || 600;
+    }
+  // Group by category and subcategory
+    const nested = d3.rollups(
+      data,
+      v => v.length,
+      d => d.Category,
+      d => d.Subcategory
+    );
+    const categories = nested.map(([cat]) => cat);
+    const subcategories = Array.from(new Set(
+      nested.flatMap(([cat, subcats]) => subcats.map(([subcat]) => subcat))
+    ));
+  // Build data for stacking
+    const stackedData = categories.map(cat => {
+      const subcatMap = new Map(nested.find(([c]) => c === cat)[1]);
+      const obj = { category: cat };
+      subcategories.forEach(subcat => {
+        obj[subcat] = subcatMap.get(subcat) || 0;
+      });
+      return obj;
+    });
+  // D3 stack configuration
+    const stack = d3.stack()
+      .keys(subcategories)
+      .order(d3.stackOrderNone)
+      .offset(d3.stackOffsetNone);
+    const series = stack(stackedData);
+  // Margin and dimensions
+    const legendWidth = 180;
+    const margin = { top: 50, right: legendWidth + 80, bottom: 100, left: 60 };
+    const w = width - margin.left - margin.right;
+    const h = height - margin.top - margin.bottom;
+    const svg = chart.append('svg')
+      .attr('width', '100%')
+      .attr('height', '100%')
+      .attr('viewBox', `0 0 ${width} ${height}`)
+      .attr('preserveAspectRatio', 'xMidYMid meet');
+    console.log('[StackedBar] SVG creado:', svg);
+    const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+  // Scales
+    const x = d3.scaleBand()
+      .domain(categories)
+      .range([0, w])
+      .padding(0.18);
+    const y = d3.scaleLinear()
+      .domain([0, d3.max(stackedData, d => d3.sum(subcategories, k => d[k])) || 1])
+      .nice()
+      .range([h, 0]);
+  // Draw stacked bars
+    g.selectAll('g.layer')
+      .data(series)
+      .enter()
+      .append('g')
+      .attr('class', 'layer')
+      .attr('fill', (d, i) => colorScale(subcategories[i]))
+      .selectAll('rect')
+      .data(d => d)
+      .enter()
+      .append('rect')
+      .attr('x', d => x(d.data.category))
+      .attr('y', d => y(d[1]))
+      .attr('height', d => y(d[0]) - y(d[1]))
+      .attr('width', x.bandwidth())
+      .attr('opacity', 0.92);
+    console.log('[StackedBar] Barras apiladas dibujadas');
+  // Value labels (optional, only total)
+    g.selectAll('text.stacked-label')
+      .data(stackedData)
+      .enter()
+      .append('text')
+      .attr('class', 'stacked-label')
+      .attr('x', d => x(d.category) + x.bandwidth() / 2)
+      .attr('y', d => y(d3.sum(subcategories, k => d[k])) - 6)
+      .attr('text-anchor', 'middle')
+      .attr('fill', '#e5e7eb')
+      .attr('font-size', width < 500 ? '0.65rem' : width < 700 ? '0.8rem' : '0.9rem')
+      .text(d => d3.sum(subcategories, k => d[k]));
+  // X axis
+    g.append('g')
+      .attr('class', 'x-axis')
+      .attr('transform', `translate(0,${h})`)
+      .call(d3.axisBottom(x))
+      .selectAll('text')
+      .attr('fill', '#e5e7eb')
+      .attr('font-size', width < 500 ? '0.7rem' : width < 700 ? '0.85rem' : '0.95rem')
+      .attr('transform', null)
+      .style('text-anchor', 'middle');
+  // Y axis
+    g.append('g')
+      .attr('class', 'y-axis')
+      .call(d3.axisLeft(y).ticks(6))
+      .selectAll('text')
+      .attr('fill', '#e5e7eb')
+      .attr('font-size', width < 500 ? '0.7rem' : width < 700 ? '0.85rem' : '0.95rem');
+  // Chart title
+    // Move title further left for better centering
+    svg.append('text')
+      .attr('x', width / 2 - 80)
+      .attr('y', margin.top / 2)
+      .attr('text-anchor', 'middle')
+      .attr('fill', '#e5e7eb')
+      .attr('font-size', width < 500 ? '0.9rem' : width < 700 ? '1rem' : '1.1rem')
+      .text(title);
+    // Legend (improved layout for long labels)
+    const legend = svg.append('g')
+      .attr('class', 'legend')
+      .attr('transform', `translate(${width - legendWidth + 10},${margin.top})`);
+    subcategories.forEach((subcat, i) => {
+      legend.append('rect')
+        .attr('x', 0)
+        .attr('y', i * 32)
+        .attr('width', 18)
+        .attr('height', 18)
+        .attr('fill', colorScale(subcat));
+      // Text wrapping for legend labels
+      const maxLineLength = 18; // characters per line
+      const words = subcat.split(' ');
+      let lines = [];
+      let currentLine = '';
+      words.forEach(word => {
+        if ((currentLine + ' ' + word).trim().length > maxLineLength) {
+          lines.push(currentLine.trim());
+          currentLine = word;
+        } else {
+          currentLine += ' ' + word;
+        }
+      });
+      if (currentLine) lines.push(currentLine.trim());
+      const text = legend.append('text')
+        .attr('x', 26)
+        .attr('y', i * 32 + 14)
+        .attr('fill', '#e5e7eb')
+        .attr('font-size', '1.05rem')
+        .attr('text-anchor', 'start')
+        .attr('alignment-baseline', 'middle');
+      lines.forEach((line, idx) => {
+        text.append('tspan')
+          .attr('x', 26)
+          .attr('y', i * 32 + 14 + idx * 16)
+          .text(line);
+      });
+    });
+  }
