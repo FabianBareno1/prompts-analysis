@@ -1,6 +1,6 @@
 import { chart, showError, clearError, updateSummaryMarkdown } from '../index.js';
 import { hasColumn } from '../dataHelpers.js';
-import { drawBarChart, drawPieChart, drawNestedPieChart, drawGroupedBarChart, aggregateByColumn } from '../chartHelpers.js';
+import { drawBarChart, drawPieChart, drawNestedPieChart, drawStackedBarChart, aggregateByColumn } from '../chartHelpers.js';
 
 export function renderSemanticBugDetectionChart(data, chartType) {
   updateSummaryMarkdown('semantic-bug-detection');
@@ -31,6 +31,6 @@ export function renderSemanticBugDetectionChart(data, chartType) {
   } else if (chartType === 'category') {
     if (!hasColumn(data, 'Category')) { showError('CSV is missing the "Category" column.'); return; }
     if (!hasColumn(data, 'Subcategory')) { showError('CSV is missing the "Subcategory" column.'); return; }
-    drawGroupedBarChart(chart, data, width, height, colorScale, 'Issues per Category and Subcategory');
+  drawStackedBarChart(chart, data, width, height, colorScale, 'Issues per Category and Subcategory');
   }
 }
