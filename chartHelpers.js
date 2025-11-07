@@ -1,3 +1,4 @@
+import { truncateLabel } from './uiHelpers.js';
 /**
  * Draws a grouped bar chart for category/subcategory counts.
  * @param {d3.Selection} chart - D3 selection of the container.
@@ -130,7 +131,7 @@ export function drawNestedPieChart(chart, data, width, height, colorScale, title
 }
 // Common chart rendering and aggregation helpers for all dashboard sections
 
-export function drawBarChart(chart, labels, values, width, height, colorScale, title, xLabel, yLabel) {
+export function drawBarChart(chart, labels, values, width, height, colorScale, title, xLabel, yLabel, showValueLabels = true, valueLabelFormatter, tooltipFormatter = undefined) {
   if (!width || !height) {
     const bounds = chart.node().getBoundingClientRect();
     width = bounds.width || 650;
@@ -141,11 +142,11 @@ export function drawBarChart(chart, labels, values, width, height, colorScale, t
   if (width < 500) {
     height = Math.max(height, 400);
     let extraBottom = labels.length > 12 ? 28 : 0;
-    margin = { top: 18, right: 10, bottom: 100 + extraBottom, left: 10 };
+    margin = { top: 100, right: 10, bottom: 100 + extraBottom, left: 10 };
   } else if (width < 700) {
-    margin = { top: 28, right: 18, bottom: 150, left: 38 };
+    margin = { top: 80, right: 18, bottom: 150, left: 38 };
   } else {
-    margin = { top: 40, right: 30, bottom: 100, left: 60 };
+    margin = { top: 80, right: 30, bottom: 120, left: 60 };
   }
 
   chart.selectAll('svg').remove();
@@ -220,7 +221,7 @@ export function drawBarChart(chart, labels, values, width, height, colorScale, t
     .attr('fill', (d, i) => colorScale(i))
     .on('mouseover', function(event, d) {
       tooltip.style('display', 'block')
-        .html(`<b>${xLabel}:</b> ${d.label}<br><b>${yLabel}:</b> ${d.value}`);
+        .html(tooltipFormatter ? tooltipFormatter(d, xLabel, yLabel) : `<b>${xLabel}:</b> ${d.label}<br><b>${yLabel}:</b> ${d.value}`);
       d3.select(this).attr('opacity', 0.8);
     })
     .on('mousemove', function(event) {
@@ -233,17 +234,18 @@ export function drawBarChart(chart, labels, values, width, height, colorScale, t
     });
 
   // Value labels
-  g.selectAll('.label')
-    .data(labels.map((d, i) => ({ label: d, value: values[i] })))
-    .enter()
-    .append('text')
-    .attr('x', d => x(d.label) + x.bandwidth() / 2)
-    .attr('y', d => y(d.value) - 6)
-    .attr('text-anchor', 'middle')
-    .attr('fill', '#e5e7eb')
-    .attr('font-size', width < 500 ? '0.65rem' : width < 700 ? '0.8rem' : '0.9rem')
-    .text(d => d.value);
-
+  if (showValueLabels) {
+    g.selectAll('.label')
+      .data(labels.map((d, i) => ({ label: d, value: values[i] })))
+      .enter()
+      .append('text')
+      .attr('x', d => x(d.label) + x.bandwidth() / 2)
+      .attr('y', d => y(d.value) - 6)
+      .attr('text-anchor', 'middle')
+      .attr('fill', '#e5e7eb')
+      .attr('font-size', width < 500 ? '0.65rem' : width < 700 ? '0.8rem' : '0.9rem')
+      .text(d => valueLabelFormatter ? valueLabelFormatter(d.value) : d.value);
+  }
   // Chart title
   svg.append('text')
     .attr('x', width / 2)
@@ -255,76 +257,97 @@ export function drawBarChart(chart, labels, values, width, height, colorScale, t
 }
 
 export function drawPieChart(chart, labels, values, width, height, colorScale, title) {
-  // Remove previous SVG if any
   chart.selectAll('svg').remove();
-
-  // Get container width if not provided
   if (!width || !height) {
     const bounds = chart.node().getBoundingClientRect();
     width = bounds.width || 650;
     height = bounds.height || 600;
   }
-
-  // Create responsive SVG
+  const minMargin = 60;
+  const radius = Math.min(width, height) / 2 - minMargin;
   const svg = chart.append('svg')
     .attr('width', '100%')
     .attr('height', '100%')
     .attr('viewBox', `0 0 ${width} ${height}`)
     .attr('preserveAspectRatio', 'xMidYMid meet');
-
-  const radius = Math.min(width, height) / 2 - 40;
-  // Add extra vertical space below the title (e.g., 40px instead of 20)
-  const g = chart.append('g').attr('transform', `translate(${width / 2},${height / 2 + 40})`);
-  const pie = d3.pie().value(d => d.value);
-  // Aggregate small portions into "Other"
-  const threshold = 2; // Define the threshold for small portions
+  const g = svg.append('g').attr('transform', `translate(${width / 2},${height / 2 + 20})`);
+  let tooltip = d3.select('body').select('.pie-tooltip');
+  if (tooltip.empty()) {
+    tooltip = d3.select('body').append('div')
+      .attr('class', 'pie-tooltip')
+      .style('position', 'absolute')
+      .style('pointer-events', 'none')
+      .style('background', 'rgba(30,41,59,0.97)')
+      .style('color', '#e5e7eb')
+      .style('padding', '7px 13px')
+      .style('border-radius', '7px')
+      .style('font-size', '1rem')
+      .style('box-shadow', '0 2px 8px rgba(0,0,0,0.18)')
+      .style('z-index', '9999')
+      .style('display', 'none');
+  }
+  const threshold = 2;
   const aggregatedData = labels.map((label, i) => ({ label, value: values[i] }));
   const smallPortions = aggregatedData.filter(d => d.value <= threshold);
   const otherValue = smallPortions.reduce((sum, d) => sum + d.value, 0);
   const filteredData = aggregatedData.filter(d => d.value > threshold);
-
   if (otherValue > 0) {
-      filteredData.push({ label: 'Other', value: otherValue });
+    filteredData.push({ label: 'Other', value: otherValue });
   }
-
+  const pie = d3.pie().value(d => d.value);
   const arcs = pie(filteredData);
-  // Calculate total count to convert slice values into percentages
   const totalCount = filteredData.reduce((s, d) => s + (Number(d.value) || 0), 0);
-
   const arcGenerator = d3.arc().innerRadius(radius * 0.45).outerRadius(radius);
-  const outerArc = d3.arc().innerRadius(radius * 0.65).outerRadius(radius * 0.85); // Reduced radius for better fit
 
   g.selectAll('path')
     .data(arcs)
     .enter()
     .append('path')
-    .attr('d', d3.arc().innerRadius(radius * 0.45).outerRadius(radius))
+    .attr('d', arcGenerator)
     .attr('fill', (d, i) => colorScale(i))
     .attr('stroke', '#222')
-    .attr('stroke-width', 2);
-  g.selectAll('text')
+    .attr('stroke-width', 2)
+    .on('mouseover', function(event, d) {
+      tooltip.style('display', 'block')
+        .html(`<b>${d.data.label}</b><br>Valor: ${d.data.value}<br>Porcentaje: ${(totalCount > 0 ? (d.data.value / totalCount * 100).toFixed(1) : '0.0')}%`);
+      d3.select(this).attr('opacity', 0.8);
+    })
+    .on('mousemove', function(event) {
+      tooltip.style('left', (event.pageX + 15) + 'px')
+        .style('top', (event.pageY - 28) + 'px');
+    })
+    .on('mouseout', function() {
+      tooltip.style('display', 'none');
+      d3.select(this).attr('opacity', 1);
+    });
+  g.selectAll('text.pie-label')
     .data(arcs)
     .enter()
     .append('text')
-    .attr('transform', function(d) {
-      // Place label just outside the arc
-      const pos = d3.arc().innerRadius(radius * 1.05).outerRadius(radius * 1.15).centroid(d);
-      return `translate(${pos[0]},${pos[1]})`;
-    })
+    .attr('class', 'pie-label pie-label-size')
+    .attr('fill', '#e5e7eb')
+    .attr('font-weight', 'bold')
+    .attr('alignment-baseline', 'middle')
     .attr('text-anchor', function(d) {
-      // Place anchor based on angle
       const midAngle = (d.startAngle + d.endAngle) / 2;
       return midAngle < Math.PI ? 'start' : 'end';
     })
-    .attr('fill', '#e5e7eb')
-    .attr('font-size', '1rem')
-    .attr('font-weight', 'bold')
+    .attr('x', function(d) {
+      const midAngle = (d.startAngle + d.endAngle) / 2;
+      return Math.cos(midAngle - Math.PI / 2) * (radius * 1.08) + (midAngle < Math.PI ? 18 : -18);
+    })
+    .attr('y', function(d) {
+      const midAngle = (d.startAngle + d.endAngle) / 2;
+      return Math.sin(midAngle - Math.PI / 2) * (radius * 1.08);
+    })
     .text(d => {
       const count = Number(d.data.value) || 0;
       const pct = totalCount > 0 ? (count / totalCount) * 100 : 0;
-      return `${d.data.label}: ${pct.toFixed(1)}%`;
-    });
-  chart.append('text')
+      return `${truncateLabel(d.data.label)}: ${pct.toFixed(1)}%`;
+    })
+    .append('title')
+    .text(d => `${d.data.label}: ${(totalCount > 0 ? (d.data.value / totalCount * 100).toFixed(1) : '0.0')}%`);
+  svg.append('text')
     .attr('x', width / 2)
     .attr('y', 30)
     .attr('text-anchor', 'middle')
@@ -359,9 +382,6 @@ export function aggregateByColumn(data, column, filterEmpty = false) {
  * Draws a stacked bar chart by category/subcategory.
  * @param {d3.Selection} chart - D3 selection of the container.
  * @param {Array<Object>} data - Original CSV data.
- * @param {number} width - Chart width.
- * @param {number} height - Chart height.
- * @param {d3.ScaleOrdinal} colorScale - D3 color scale.
  * @param {string} title - Chart title.
  */
 export function drawStackedBarChart(chart, data, width, height, colorScale, title) {

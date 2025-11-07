@@ -121,6 +121,8 @@ export function updateSummaryMarkdown(type) {
  * @param {string} chartType - Chart type to display (optional, depends on section).
  */
 export function renderSection(data, type, chartType) {
+  const legendDiv = document.getElementById('legend');
+  if (legendDiv && legendDiv.parentNode) legendDiv.parentNode.removeChild(legendDiv);
   showSecurityDatatable(type);
   switch (type) {
     case 'code-coverage':
