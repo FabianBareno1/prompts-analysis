@@ -476,7 +476,7 @@ export function renderModuleHeatmapBar({ modules, months, churnMatrix }) {
             .style('display', 'none');
         }
         tooltip.style('display', 'block')
-          .html(`<b>Módulo:</b> ${d.key}<br><b>Mes:</b> ${d.month || ''}<br><b>Churn:</b> ${d.rawValue}`);
+          .html(`<b>Module:</b> ${d.key}<br><b>Month:</b> ${d.month || ''}<br><b>Churn:</b> ${d.rawValue}`);
         d3.select(this).attr('opacity', 0.8);
       })
       .on("mousemove", function(event, d) {
