@@ -305,166 +305,6 @@ export async function generateModuleHeatmapData() {
 }
 
 /**
- * Renders the module churn heatmap.
- */
-export function renderModuleHeatmap({ modules, months, churnMatrix }) {
-  const container = d3.select('#heatmap-container');
-  container.selectAll('*').remove();
-  const margin = { top: 40, right: 80, bottom: 40, left: 100 };
-  const width = (container.node().clientWidth || 900) - margin.left - margin.right;
-  const height = (container.node().clientHeight || 600) - margin.top - margin.bottom;
-  const cellWidth = width / months.length;
-  const cellHeight = height / modules.length;
-  const maxChurn = d3.max(churnMatrix.flat());
-  const colorSteps = 5;
-  // Step values: 0, 1/49, 2/49, ..., 49/49 of maxChurn
-  const stepValues = Array.from({length: colorSteps}, (_, i) => i * maxChurn / (colorSteps - 1));
-  // Build color range: white for 0, then interpolate greens for the rest
-  const colorRange = ['#fff', ...Array.from({length: colorSteps - 1}, (_, i) => d3.interpolateGreens((i + 1) / (colorSteps - 1)))];
-  const colorScale = d3.scaleOrdinal()
-    .domain(stepValues)
-    .range(colorRange);
-  const totalWidth = width + margin.left + margin.right;
-  const totalHeight = height + margin.top + margin.bottom;
-  const svg = container.append('svg')
-    .attr('width', '100%')
-    .attr('height', '100%')
-    .attr('viewBox', `0 0 ${totalWidth} ${totalHeight}`)
-    .attr('preserveAspectRatio', 'xMidYMid meet');
-  svg.append('text')
-    .attr('x', totalWidth / 2)
-    .attr('y', margin.top / 2)
-    .attr('text-anchor', 'middle')
-    .attr('fill', '#e5e7eb')
-    .attr('font-size', '1.1rem')
-    .text('Git Activity');
-  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
-  // Tooltip visual
-  let tooltip = d3.select('body').select('.heatmap-tooltip');
-  if (tooltip.empty()) {
-    tooltip = d3.select('body').append('div')
-      .attr('class', 'heatmap-tooltip')
-      .style('position', 'absolute')
-      .style('pointer-events', 'none')
-      .style('background', 'rgba(30,41,59,0.97)')
-      .style('color', '#e5e7eb')
-      .style('padding', '7px 13px')
-      .style('border-radius', '7px')
-      .style('font-size', '1rem')
-      .style('box-shadow', '0 2px 8px rgba(0,0,0,0.18)')
-      .style('z-index', '9999')
-      .style('display', 'none');
-  }
-
-  g.selectAll('g')
-    .data(churnMatrix)
-    .enter()
-    .append('g')
-    .attr('transform', (d, i) => `translate(0,${i * cellHeight})`)
-    .selectAll('rect')
-    .data((row, i) => row.map((d, j) => ({ churn: d, month: months[j], module: modules[i] })))
-    .enter()
-    .append('rect')
-    .attr('x', (d, j) => j * cellWidth + 2) // 2px separation left
-    .attr('y', 2) // 2px separation top
-    .attr('width', cellWidth - 4) // 2px separation on each side
-    .attr('height', cellHeight - 4) // 2px separation on each side
-    .attr('rx', 6) // border radius horizontal
-    .attr('ry', 6) // border radius vertical
-    .attr('fill', d => {
-      if (maxChurn === 0 || d.churn === 0 || isNaN(d.churn)) return '#fff';
-      // Find closest step for churn value
-      for (let i = 0; i < stepValues.length; i++) {
-        if (d.churn <= stepValues[i]) return colorRange[i];
-      }
-      return colorRange[colorRange.length - 1];
-    })
-    .on('mouseover', function(event, d) {
-        const churnValue = (d.churn === 0 || isNaN(d.churn)) ? 0 : d.churn;
-        tooltip.style('display', 'block')
-          .html(`<b>Module:</b> ${d.module}<br><b>Month:</b> ${d.month}<br><b>Churn:</b> ${churnValue}`);
-      d3.select(this).attr('stroke', '#fff').attr('stroke-width', 2);
-    })
-    .on('mousemove', function(event) {
-      tooltip.style('left', (event.pageX + 15) + 'px')
-        .style('top', (event.pageY - 28) + 'px');
-    })
-    .on('mouseout', function() {
-      tooltip.style('display', 'none');
-      d3.select(this).attr('stroke', null).attr('stroke-width', null);
-    });
-  let showMonthLabelEvery = 1;
-  const isMobile = (container.node().clientWidth || 900) < 800;
-  if (isMobile) {
-    showMonthLabelEvery = 3;
-  }
-  svg.append('g')
-    .attr('transform', `translate(${margin.left},${height + margin.top})`)
-    .call(d3.axisBottom(d3.scaleBand().domain(months).range([0, width])
-      ).tickFormat((d, i) => (i % showMonthLabelEvery === 0 ? d : '')))
-    .selectAll('text')
-    .style('font-size', '10px')
-    .attr('transform', 'rotate(-45)')
-    .attr('text-anchor', 'end');
-  svg.append('text')
-    .attr('x', margin.left + width / 2)
-    .attr('y', height + margin.top + 40)
-    .attr('text-anchor', 'middle')
-    .attr('fill', '#fff')
-    .style('font-size', '13px')
-    .text('Month');
-  svg.append('g')
-    .attr('transform', `translate(${margin.left},${margin.top})`)
-    .call(d3.axisLeft(d3.scaleBand().domain(modules).range([0, height])))
-    .selectAll('text')
-    .style('font-size', '10px');
-  svg.append('text')
-    .attr('transform', `rotate(-90)`)
-    .attr('x', -margin.top - height / 2)
-    .attr('y', margin.left - 70)
-    .attr('text-anchor', 'middle')
-    .attr('fill', '#fff')
-    .style('font-size', '13px')
-    .text('Module');
-  const legendHeight = 120;
-  const legendWidth = 16;
-  const legendScale = d3.scaleLinear()
-    .domain(colorScale.domain())
-    .range([legendHeight, 0]);
-  const legendAxis = d3.axisRight(legendScale)
-    .ticks(6);
-  const legend = svg.append('g')
-    .attr('transform', `translate(${width + margin.left + 30},${margin.top})`);
-  const defs = svg.append('defs');
-  const gradientId = 'heatmap-gradient';
-  const gradient = defs.append('linearGradient')
-    .attr('id', gradientId)
-    .attr('x1', '0%').attr('y1', '100%')
-    .attr('x2', '0%').attr('y2', '0%');
-  for (let i = 0; i <= 100; i++) {
-    gradient.append('stop')
-      .attr('offset', `${i}%`)
-      .attr('stop-color', colorScale(colorScale.domain()[0] + (colorScale.domain()[1] - colorScale.domain()[0]) * i / 100));
-  }
-  legend.append('rect')
-    .attr('width', legendWidth)
-    .attr('height', legendHeight)
-    .style('fill', `url(#${gradientId})`);
-  legend.append('g')
-    .attr('transform', `translate(${legendWidth},0)`)
-    .call(legendAxis)
-    .selectAll('text')
-    .style('font-size', '10px');
-  legend.append('text')
-    .attr('x', legendWidth / 2)
-    .attr('y', legendHeight + 20)
-    .attr('text-anchor', 'middle')
-    .attr('fill', '#fff')
-    .style('font-size', '12px')
-    .text('Churn');
-}
-
-/**
  * Updates the dashboard UI based on the selected section.
  * Only renders commit bar charts and heatmap for Regression Risk.
  * @param {string} sectionId - The id of the selected section.
@@ -518,7 +358,7 @@ export function renderModuleHeatmapBar({ modules, months, churnMatrix }) {
   const container = d3.select('#heatmap-container');
   container.selectAll('*').remove();
   const margin = { top: 40, right: 80, bottom: 40, left: 100 };
-  const width = (container.node().clientWidth || 900) - margin.left - margin.right;
+  const width = (container.node().clientWidth || 2000) - margin.left - margin.right;
   const height = (container.node().clientHeight || 600) - margin.top - margin.bottom;
   const cellWidth = width / months.length;
   const cellHeight = height / modules.length;
@@ -544,7 +384,7 @@ export function renderModuleHeatmapBar({ modules, months, churnMatrix }) {
     .attr('text-anchor', 'middle')
     .attr('fill', '#e5e7eb')
     .attr('font-size', '1.1rem')
-    .text('Git Activity');
+    .text('Heatmap');
   const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
 
         var x0 = d3.scaleBand()
@@ -617,7 +457,7 @@ export function renderModuleHeatmapBar({ modules, months, churnMatrix }) {
         const val = Number(d.value);
         return isNaN(val) ? y(0) : y(val);
       })
-      .attr("width", x1.bandwidth())
+  .attr("width", x1.bandwidth())
       .attr("height", function (d) {
         const val = Number(d.value);
         return Math.max(0, height - (isNaN(val) ? y(0) : y(val)));
@@ -686,17 +526,8 @@ export function renderModuleHeatmapBar({ modules, months, churnMatrix }) {
             */
 
 g.append("g")
-    .attr("class", "axis")
-    .call(d3.axisLeft(y)
-        .ticks(10, ".2s")) // "~s" gives compact formatting for log scale
-    .append("text")
-    .attr("x", 2)
-    .attr("y", y.range()[1])
-    .attr("dy", "0.32em")
-    .attr("fill", "#000")
-    .attr("font-weight", "bold")
-    .attr("text-anchor", "start")
-    .text("Churn");
+  .attr("class", "axis")
+  .call(d3.axisLeft(y).tickFormat(''));
 
 
     var legendOffsetX = width + 60; // Más a la derecha
@@ -721,5 +552,6 @@ g.append("g")
       .attr("x", 26)
       .attr("y", 13)
       .attr("dy", "0.32em")
+      .attr("fill", "#fff")
       .text(function (d) { return d; });
 }
