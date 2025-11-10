@@ -57,8 +57,10 @@ export function loadSecurityDatatable(csvPath) {
       autoWidth: false,
       destroy: true,      // safe re-init if called again
       deferRender: true,
-      // keep chrome minimal (works in DT2; ignored in DT1)
-      layout: { top: null, bottom: null }
+      columnControl: {
+        target: 'tfoot',
+        content: ['search']
+      }
     });
   }).catch(err => {
     console.error('Failed to load ' + csvPath, err);
