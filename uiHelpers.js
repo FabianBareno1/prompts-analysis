@@ -70,7 +70,7 @@ export function renderHeatmap() {
   if (!heatmapContainer) return;
   heatmapContainer.style.display = 'block';
   heatmapContainer.innerHTML = '';
-  generateModuleHeatmapData().then(renderModuleHeatmap);
+  generateModuleHeatmapData().then(renderModuleHeatmapBar);
 }
 
 const SECTION_IDS = ['regression-risk', 'unit-testing', 'security-posture', 'semantic-bug-detection'];
@@ -512,4 +512,214 @@ export function hideAllChartTypeSelectors(selectors) {
   Object.values(selectors).forEach(sel => {
     if (sel) sel.style.display = 'none';
   });
+}
+
+export function renderModuleHeatmapBar({ modules, months, churnMatrix }) {
+  const container = d3.select('#heatmap-container');
+  container.selectAll('*').remove();
+  const margin = { top: 40, right: 80, bottom: 40, left: 100 };
+  const width = (container.node().clientWidth || 900) - margin.left - margin.right;
+  const height = (container.node().clientHeight || 600) - margin.top - margin.bottom;
+  const cellWidth = width / months.length;
+  const cellHeight = height / modules.length;
+  const maxChurn = d3.max(churnMatrix.flat());
+  const colorSteps = 5;
+  // Step values: 0, 1/49, 2/49, ..., 49/49 of maxChurn
+  const stepValues = Array.from({length: colorSteps}, (_, i) => i * maxChurn / (colorSteps - 1));
+  // Build color range: white for 0, then interpolate greens for the rest
+  const colorRange = ['#fff', ...Array.from({length: colorSteps - 1}, (_, i) => d3.interpolateGreens((i + 1) / (colorSteps - 1)))];
+  const colorScale = d3.scaleOrdinal()
+    .domain(stepValues)
+    .range(colorRange);
+  const totalWidth = width + margin.left + margin.right;
+  const totalHeight = height + margin.top + margin.bottom;
+  const svg = container.append('svg')
+    .attr('width', '100%')
+    .attr('height', '100%')
+    .attr('viewBox', `0 0 ${totalWidth} ${totalHeight}`)
+    .attr('preserveAspectRatio', 'xMidYMid meet');
+  svg.append('text')
+    .attr('x', totalWidth / 2)
+    .attr('y', margin.top / 2)
+    .attr('text-anchor', 'middle')
+    .attr('fill', '#e5e7eb')
+    .attr('font-size', '1.1rem')
+    .text('Git Activity');
+  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+        var x0 = d3.scaleBand()
+            .rangeRound([0, width])
+            .paddingInner(0.1);
+
+        var x1 = d3.scaleBand()
+            .padding(0.05);
+
+
+        //  var y = d3.scaleLinear()
+        //      .rangeRound([height, 0]);
+            
+        
+        var y = d3.scaleLog().rangeRound([height, 0]);
+
+        var colorValues = ['#d53e50','#f46c43','#fdaf61','#FEE08B','#E6F598','#ABDDA4','#66C2A5'];
+        var oldColorValues = ["#98abc5", "#8a89a6", "#7b6888", "#6b486b", "#a05d56", "#d0743c", "#ff8c00"];
+
+        var z = d3.scaleOrdinal()
+            .range(colorValues);
+
+      
+    // Transform churnMatrix to log scale (add 1 to avoid log(0))
+    const logChurnMatrix = churnMatrix.map(row => row.map(val => Math.log10(val + 1)));
+
+    // Prepare data for grouped bar chart, guardando también el valor original
+    var data = months.map((month, j) => {
+      const entry = { Month: month };
+      modules.forEach((mod, i) => {
+        entry[mod] = logChurnMatrix[i][j];
+        entry[mod + '_raw'] = churnMatrix[i][j];
+      });
+      return entry;
+    });
+
+    var keys = modules;
+       
+        // x-axis grouping is called here
+        x0.domain(data.map(function (d) { return d.Month; }));
+        x1.domain(keys).rangeRound([0, x0.bandwidth()]);
+        y.domain([
+            //0, 
+            //d3.max(data, function (d) { return d3.max(keys, function (key) { return d[key]; }); })
+            d3.min(data, d => d3.min(keys, key => d[key] > 0 ? d[key] : Infinity)),
+            d3.max(data, d => d3.max(keys, key => d[key]))
+            ]).nice();
+
+    g.append("g")
+      .selectAll("g")
+      .data(data)
+      .enter().append("g")
+      .attr("transform", function (d) {
+        const x = x0(d.Month);
+        return "translate(" + (typeof x === "number" && !isNaN(x) ? x : 0) + ",0)";
+      })
+      .selectAll("rect")
+      .data(function (d) {
+        return keys
+          .map(function (key) {
+            const val = Number(d[key]);
+            const raw = Number(d[key + '_raw']);
+            return { key: key, value: val, rawValue: raw, month: d.Month };
+          })
+          .filter(bar => !isNaN(bar.value) && bar.value > 0);
+      })
+      .enter().append("rect")
+      .attr("x", function (d) { return x1(d.key); })
+      .attr("y", function (d) {
+        const val = Number(d.value);
+        return isNaN(val) ? y(0) : y(val);
+      })
+      .attr("width", x1.bandwidth())
+      .attr("height", function (d) {
+        const val = Number(d.value);
+        return Math.max(0, height - (isNaN(val) ? y(0) : y(val)));
+      })
+      .attr("fill", function (d) { return z(d.key); })
+      .on("mouseover", function(event, d) {
+        let tooltip = d3.select('body').select('.bar-tooltip');
+        if (tooltip.empty()) {
+          tooltip = d3.select('body').append('div')
+            .attr('class', 'bar-tooltip')
+            .style('position', 'absolute')
+            .style('pointer-events', 'none')
+            .style('background', 'rgba(30,41,59,0.97)')
+            .style('color', '#e5e7eb')
+            .style('padding', '7px 13px')
+            .style('border-radius', '7px')
+            .style('font-size', '1rem')
+            .style('box-shadow', '0 2px 8px rgba(0,0,0,0.18)')
+            .style('z-index', '9999')
+            .style('display', 'none');
+        }
+        tooltip.style('display', 'block')
+          .html(`<b>Módulo:</b> ${d.key}<br><b>Mes:</b> ${d.month || ''}<br><b>Churn:</b> ${d.rawValue}`);
+        d3.select(this).attr('opacity', 0.8);
+      })
+      .on("mousemove", function(event, d) {
+        let tooltip = d3.select('body').select('.bar-tooltip');
+        tooltip.style('left', (event.pageX + 15) + 'px')
+          .style('top', (event.pageY - 28) + 'px');
+      })
+      .on("mouseout", function() {
+        let tooltip = d3.select('body').select('.bar-tooltip');
+        tooltip.style('display', 'none');
+        d3.select(this).attr('opacity', 1);
+      });
+
+        g.append("g")
+            .attr("class", "axis")
+            .attr("transform", "translate(0," + height + ")")
+            .call(d3.axisBottom(x0));
+
+        // Eje Y con los valores originales (churn)
+        g.append("g")
+            .attr("class", "axis")
+            .call(d3.axisLeft(
+                d3.scaleLinear()
+                  .domain([
+                    d3.min(churnMatrix.flat().filter(v => v > 0)),
+                    d3.max(churnMatrix.flat())
+                  ])
+                  .range([height, 0])
+            ));
+
+/*
+        g.append("g")
+            .attr("class", "axis")
+            .call(d3.axisLeft(y).ticks(null, "s"))
+            .append("text")
+            .attr("x", 2)
+            .attr("y", y(y.ticks().pop()) + 0.5)
+            .attr("dy", "0.32em")
+            .attr("fill", "#000")
+            .attr("font-weight", "bold")
+            .attr("text-anchor", "start")
+            .text("Churn"); // Y-Axis is named here
+            */
+
+g.append("g")
+    .attr("class", "axis")
+    .call(d3.axisLeft(y)
+        .ticks(10, ".2s")) // "~s" gives compact formatting for log scale
+    .append("text")
+    .attr("x", 2)
+    .attr("y", y.range()[1])
+    .attr("dy", "0.32em")
+    .attr("fill", "#000")
+    .attr("font-weight", "bold")
+    .attr("text-anchor", "start")
+    .text("Churn");
+
+
+    var legendOffsetX = width + 60; // Más a la derecha
+    var legendOffsetY = 40; // Más abajo
+    var legend = svg.append("g")
+      .attr("font-family", "sans-serif")
+      .attr("font-size", 13)
+      .attr("text-anchor", "start")
+      .attr("transform", `translate(${legendOffsetX},${legendOffsetY})`)
+      .selectAll("g")
+      .data(keys.slice().reverse())
+      .enter().append("g")
+      .attr("transform", function (d, i) { return `translate(0,${i * 24})`; });
+
+    legend.append("rect")
+      .attr("x", 0)
+      .attr("width", 19)
+      .attr("height", 19)
+      .attr("fill", z);
+
+    legend.append("text")
+      .attr("x", 26)
+      .attr("y", 13)
+      .attr("dy", "0.32em")
+      .text(function (d) { return d; });
 }
