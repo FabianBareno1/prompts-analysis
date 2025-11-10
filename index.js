@@ -1,4 +1,99 @@
 import { renderCodeCoverageChart } from './features/codeCoverage.js';
+// Flag to prevent duplicate rendering of the code coverage summary table
+let codeCoverageTableDrawn = false;
+
+// Render summary table for Code Coverage
+export async function renderCodeCoverageSummaryTable() {
+  const container = document.getElementById('summary-table-container');
+  if (!container) return;
+  // Remove any existing table to avoid duplicates
+  while (container.firstChild) container.removeChild(container.firstChild);
+  container.style.display = 'none';
+  // Only show for code coverage section
+  const activeBtn = document.querySelector('nav button.active');
+  if (!activeBtn || activeBtn.id !== 'code-coverage') return;
+  // Load CSV
+  const csvPath = 'files/details/CodeCoverage.csv';
+  let data;
+  try {
+    data = await d3.csv(csvPath, row => {
+      if (!row || Object.values(row).every(v => v === '' || v == null)) return null;
+      if (Object.values(row)[0] && Object.values(row)[0].startsWith('//')) return null;
+      return row;
+    });
+    data = data.filter(Boolean);
+  } catch (err) {
+    container.textContent = 'Error loading CodeCoverage.csv';
+    container.style.display = 'block';
+    return;
+  }
+  if (!data.length) {
+    container.textContent = 'No data found in CodeCoverage.csv';
+    container.style.display = 'block';
+    return;
+  }
+  // Group by module and calculate averages
+  const grouped = d3.group(data, d => d.Module);
+  const rows = Array.from(grouped, ([Module, items]) => {
+    const getAvg = col => {
+      const vals = items.map(r => parseFloat(r[col].replace(',', '.'))).filter(v => !isNaN(v));
+      return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
+    };
+    return {
+      Module,
+      'Lines%': getAvg('Lines%').toFixed(2),
+      'Branches%': getAvg('Branches%').toFixed(2),
+      'Functions%': getAvg('Functions%').toFixed(2),
+      'Statements%': getAvg('Statements%').toFixed(2),
+      Files: items.length
+    };
+  });
+  // Create HTML table
+  const table = document.createElement('table');
+  table.id = 'summary-table';
+  table.className = 'display';
+  table.style.width = '100%';
+  container.appendChild(table);
+  // Initialize DataTables
+  $(table).DataTable({
+    data: rows,
+    columns: [
+      { title: 'Module', data: 'Module' },
+      { title: 'Lines%', data: 'Lines%' },
+      { title: 'Branches%', data: 'Branches%' },
+      { title: 'Functions%', data: 'Functions%' },
+      { title: 'Statements%', data: 'Statements%' },
+      { title: 'Files', data: 'Files' }
+    ],
+    pageLength: 10,
+    lengthMenu: [10, 25, 50, 100, 200],
+    order: [[1, 'desc']],
+    scrollX: true,
+    scrollY: '400px',
+    scrollCollapse: true,
+    autoWidth: false,
+    destroy: true,
+    deferRender: true,
+     columnControl: {
+       target: 'tfoot',
+       content: ['search']
+     }
+     // Copiar estilos del datatable de Security Posture
+     ,createdRow: function(row, data, dataIndex) {
+      row.classList.add('datatable-row');
+    }
+    ,initComplete: function() {
+      // Forzar estilos en el footer/contextual menu
+      const footer = container.querySelector('.dt-column-control-menu');
+      if (footer) {
+        footer.style.background = '#161b22';
+        footer.style.color = '#e6edf3';
+        footer.style.borderColor = '#30363d';
+      }
+    }
+  });
+  container.style.display = 'block';
+}
 import { renderTestSmellsChart } from './features/testSmells.js';
 import { renderSecurityPostureChart } from './features/securityPosture.js';
 import { renderSemanticBugDetectionChart } from './features/semanticBugDetection.js';
@@ -7,6 +102,7 @@ import { loadSecurityDatatable } from './uiSecurityFunctions.js';
 
 // Show/hide summary and detail
 document.addEventListener('DOMContentLoaded', () => {
+  // Render summary table on load if code coverage is active
   const summaryBtn = document.getElementById('show-summary-btn');
   const detailBtn = document.getElementById('show-detail-btn');
   const summaryContainer = document.getElementById('summary-md-container');
@@ -15,14 +111,17 @@ document.addEventListener('DOMContentLoaded', () => {
     summaryBtn.onclick = () => {
       summaryContainer.style.display = 'block';
       chartSvg.style.display = 'none';
+      document.getElementById('summary-table-container').style.display = 'block';
     };
     detailBtn.onclick = () => {
       summaryContainer.style.display = 'none';
       chartSvg.style.display = 'block';
+      document.getElementById('summary-table-container').style.display = 'block';
     };
     // By default, show the detail (chart)
     summaryContainer.style.display = 'none';
     chartSvg.style.display = 'block';
+    document.getElementById('summary-table-container').style.display = 'block';
   }
 });
 
@@ -34,7 +133,6 @@ export const dependenciesDatatable = document.getElementById('dependencies-datat
 export const summaryMd = document.getElementById('summary-md');
 export const errorMessage = document.getElementById('error-message');
 export const loader = document.getElementById('loader');
-export const csvSummary = document.getElementById('csv-summary');
 
 export const sectionData = {
   'code-coverage': null,
@@ -53,7 +151,6 @@ export function showError(msg) {
   errorMessage.hidden = false;
   chart.selectAll('*').remove();
   loader.style.display = 'none';
-  csvSummary.style.display = 'none';
   console.error(msg);
 }
 
@@ -63,7 +160,6 @@ export function showError(msg) {
 export function clearError() {
   errorMessage.hidden = true;
   loader.style.display = 'none';
-  csvSummary.style.display = 'none';
 }
 
 /**
@@ -119,8 +215,22 @@ export function updateSummaryMarkdown(type) {
  * @param {Array<Object>} data - Parsed CSV data for the section.
  * @param {string} type - Active section identifier (e.g., 'code-coverage', 'security-posture', etc).
  * @param {string} chartType - Chart type to display (optional, depends on section).
+  summaryTableDrawn = true;
  */
 export function renderSection(data, type, chartType) {
+  // Show/hide summary table for code coverage
+  const summaryTable = document.getElementById('summary-table-container');
+  if (type === 'code-coverage') {
+    if (!codeCoverageTableDrawn) {
+      codeCoverageTableDrawn = true;
+      renderCodeCoverageSummaryTable();
+    }
+    if (summaryTable) summaryTable.style.display = 'block';
+  } else {
+    // Reset flag when leaving code coverage section
+    codeCoverageTableDrawn = false;
+    if (summaryTable) summaryTable.style.display = 'none';
+  }
   const legendDiv = document.getElementById('legend');
   if (legendDiv && legendDiv.parentNode) legendDiv.parentNode.removeChild(legendDiv);
   showSecurityDatatable(type);
