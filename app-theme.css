@@ -453,3 +453,21 @@ table.dataTable thead th,
 table.dataTable tbody td {
   white-space: nowrap;
 }
+#datatable-container {
+  color: rgb(255, 255, 255);
+  .dt-layout-row select {
+    background-color: rgb(31, 41, 55);
+  }
+  input {
+    background-color: rgb(31, 41, 55) !important;
+  }
+  svg {
+    color: white !important;
+  }
+}
+/* Basic: min-width for first column (header + body cells) */
+#dependencies-table th:first-child,
+#dependencies-table td:first-child {
+  min-width: 90px;
+}
+
