@@ -401,11 +401,7 @@ export function renderModuleHeatmapBar({ modules, months, churnMatrix }) {
         
         var y = d3.scaleLog().rangeRound([height, 0]);
 
-        var colorValues = ['#d53e50','#f46c43','#fdaf61','#FEE08B','#E6F598','#ABDDA4','#66C2A5'];
-        var oldColorValues = ["#98abc5", "#8a89a6", "#7b6888", "#6b486b", "#a05d56", "#d0743c", "#ff8c00"];
-
-        var z = d3.scaleOrdinal()
-            .range(colorValues);
+        var z = d3.scaleOrdinal(d3.schemeObservable10);
 
       
     // Transform churnMatrix to log scale (add 1 to avoid log(0))
