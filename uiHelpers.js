@@ -70,7 +70,7 @@ export function renderHeatmap() {
   if (!heatmapContainer) return;
   heatmapContainer.style.display = 'block';
   heatmapContainer.innerHTML = '';
-  generateModuleHeatmapData().then(renderModuleHeatmapBar);
+  generateModuleHeatmapData().then(renderModuleHeatmapBarScaleLog);
 }
 
 const SECTION_IDS = ['regression-risk', 'unit-testing', 'security-posture', 'semantic-bug-detection'];
@@ -359,7 +359,7 @@ export function hideAllChartTypeSelectors(selectors) {
   });
 }
 
-export function renderModuleHeatmapBar({ modules, months, churnMatrix }) {
+export function renderModuleHeatmapBarScaleLinear({ modules, months, churnMatrix }) {
   const container = d3.select('#heatmap-container');
   container.selectAll('*').remove();
   const margin = { top: 40, right: 80, bottom: 40, left: 100 };
@@ -503,5 +503,160 @@ export function renderModuleHeatmapBar({ modules, months, churnMatrix }) {
           .attr("dy", "0.32em")
           .attr("fill", "#fff")
           .attr("text-anchor", "start")
+          .text(function (d) { return d; });
+}
+
+export function renderModuleHeatmapBarScaleLog({ modules, months, churnMatrix }) {
+  const container = d3.select('#heatmap-container');
+  container.selectAll('*').remove();
+  const margin = { top: 40, right: 80, bottom: 40, left: 100 };
+  const width = (container.node().clientWidth || 2000) - margin.left - margin.right;
+  const height = (container.node().clientHeight || 600) - margin.top - margin.bottom;
+  const maxChurn = churnMatrix.length ? d3.max(churnMatrix.flat()) : 0;
+  const colorSteps = 5;
+  // Step values: 0, 1/49, 2/49, ..., 49/49 of maxChurn
+  const stepValues = Array.from({length: colorSteps}, (_, i) => i * maxChurn / (colorSteps - 1));
+  // Build color range: white for 0, then interpolate greens for the rest
+  const colorRange = ['#fff', ...Array.from({length: colorSteps - 1}, (_, i) => d3.interpolateGreens((i + 1) / (colorSteps - 1)))];
+  const colorScale = d3.scaleOrdinal()
+    .domain(stepValues)
+    .range(colorRange);
+  // Extra horizontal space reserved for legend so text isn't clipped.
+  const legendExtraWidth = 180; // adjust if more space needed
+  const totalWidth = width + margin.left + margin.right + legendExtraWidth;
+  const totalHeight = height + margin.top + margin.bottom;
+  
+    const svg = container.append("svg")
+    .attr('width', '100%')
+    .attr('height', '100%')
+    .attr('viewBox', `0 0 ${totalWidth} ${totalHeight}`)
+    .attr('preserveAspectRatio', 'xMidYMid meet');
+
+  svg.append('text')
+    .attr('x', totalWidth / 2)
+    .attr('y', margin.top / 2)
+    .attr('text-anchor', 'middle')
+    .attr('fill', '#e5e7eb')
+    .attr('font-size', '1.1rem')
+    .text('Heatmap');
+  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+        var x0 = d3.scaleBand()
+            .rangeRound([0, width])
+            .paddingInner(0.1);
+
+        var x1 = d3.scaleBand()
+            .padding(0.05);
+
+    // Log scale for Y (churn). Zero values will be mapped to 1 (minimum positive) to avoid log(0).
+    var y = d3.scaleLog()
+      .rangeRound([height, 0]);
+
+        var colorValues = ['#4E79A7','#F28E2B','#E15759','#76B7B2','#59A14F','#EDC948','#B07AA1','#FF9DA7','#9C755F','#BAB0AC'];
+        var z = d3.scaleOrdinal()
+            .range(colorValues);
+
+    var data = months.map((month, mi) => {
+      const row = { Month: month };
+      modules.forEach((mod, idx) => { row[mod] = churnMatrix[idx][mi]; });
+      return row;
+    });
+    var keys = modules.slice();
+       
+        // x-axis grouping is called here
+  x0.domain(months);
+        x1.domain(keys).rangeRound([0, x0.bandwidth()]);
+    const positiveValues2 = data.flatMap(d => keys.map(k => (d[k] ?? 0))).filter(v => v > 0);
+    const minLog2 = d3.min(positiveValues2) || 1;
+    const maxLog2 = d3.max(positiveValues2) || 1;
+    y.domain([minLog2, maxLog2]).nice();
+
+    let tooltip = d3.select('body').select('.heatmap-tooltip');
+    if (tooltip.empty()) {
+      tooltip = d3.select('body').append('div')
+        .attr('class', 'heatmap-tooltip')
+        .style('position', 'absolute')
+        .style('pointer-events', 'none')
+        .style('background', 'rgba(30,41,59,0.97)')
+        .style('color', '#e5e7eb')
+        .style('padding', '7px 13px')
+        .style('border-radius', '7px')
+        .style('font-size', '1rem')
+        .style('box-shadow', '0 2px 8px rgba(0,0,0,0.18)')
+        .style('z-index', '9999')
+        .style('display', 'none');
+    }
+
+    g.append("g")
+      .selectAll("g")
+      .data(data)
+      .enter().append("g")
+      .attr("transform", function (d) { return "translate(" + x0(d.Month) + ",0)"; })
+      .selectAll("rect")
+      .data(function (d) { return keys.map(function (key) { return { key: key, value: (d[key] ?? 0) }; }); })
+      .enter().append("rect")
+      .attr("x", function (d) { return x1(d.key); })
+  .attr("y", function (d) { return y(d.value > 0 ? d.value : minLog2); })
+      .attr("width", x1.bandwidth())
+  .attr("height", function (d) { return height - y(d.value > 0 ? d.value : minLog2); })
+      .attr("fill", function (d) { return z(d.key); })
+      .on('mouseover', function(event, d) {
+        tooltip.style('display', 'block')
+          .html(`<b>Module:</b> ${d.key}<br><b>Value:</b> ${d.value}`);
+        d3.select(this).attr('opacity', 0.8);
+      })
+      .on('mousemove', function(event) {
+        tooltip.style('left', (event.pageX + 15) + 'px')
+          .style('top', (event.pageY - 28) + 'px');
+      })
+      .on('mouseout', function() {
+        tooltip.style('display', 'none');
+        d3.select(this).attr('opacity', 1);
+      });
+
+        g.append("g")
+            .attr("class", "axis")
+            .attr("transform", "translate(0," + height + ")")
+            .call(d3.axisBottom(x0));
+
+// Linear
+        g.append("g")
+            .attr("class", "axis")
+            .call(d3.axisLeft(y)
+              .ticks(10, ".2s")) // log scale ticks
+            .append("text")
+            .attr("x", 2)
+            .attr("y", y(y.ticks().pop()) + 0.5)
+            .attr("dy", "0.32em")
+            .attr("fill", "#fff")
+            .attr("font-weight", "bold")
+            .attr("text-anchor", "start")
+            .text("Churn"); // Y-Axis is named here
+            
+    // Legend moved to right margin (outside bar area) to avoid overlap.
+    var legend = g.append("g")
+      .attr("class", "legend")
+      .attr("font-family", "sans-serif")
+      .attr("font-size", 12)
+      .attr("text-anchor", "start")
+      .selectAll("g")
+      .data(keys.slice().reverse())
+      .enter().append("g")
+      .attr("transform", function (d, i) { return "translate(" + (width + 20) + "," + i * 22 + ")"; });
+
+    legend.append("rect")
+      .attr("x", 0)
+      .attr("y", 0)
+      .attr("width", 19)
+      .attr("height", 19)
+      .attr("fill", z);
+
+        legend.append("text")
+          .attr("x", 24)
+          .attr("y", 9.5)
+          .attr("dy", "0.32em")
+          .attr("fill", "#fff")
+          .attr("text-anchor", "start")
+          .style("white-space", "nowrap")
           .text(function (d) { return d; });
 }
