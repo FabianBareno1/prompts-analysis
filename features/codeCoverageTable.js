@@ -8,6 +8,7 @@ export async function renderCodeCoverageSummaryTable() {
   // Remove any existing table to avoid duplicates
   while (outer.firstChild) outer.removeChild(outer.firstChild);
   outer.style.display = 'none';
+  outer.classList.add('datatable-container');
   // Only show for code coverage section
   const activeBtn = document.querySelector('nav button.active');
   if (!activeBtn || activeBtn.id !== 'code-coverage') return;
@@ -82,17 +83,18 @@ export async function renderCodeCoverageSummaryTable() {
     autoWidth: false,
     destroy: true,
     deferRender: true,
-      columnControl: ['order', ['search']],
-      columnDefs: [
-        {
-          targets: [0, 1, 2, 3, 4, 5],
-          columnControl: ['order', ['searchList']]
-        }
-      ],
-      ordering: {
-        indicators: false,
-        handler: false
+    columnControl: ['order', ['search']],
+    columnDefs: [
+      {
+        targets: [0, 1, 2, 3, 4, 5],
+        columnControl: ['order', ['searchList']],
+        columnControlPlacement: 'right'
       }
+    ],
+    ordering: {
+      indicators: false,
+      handler: false
+    }
   });
   outer.style.display = 'block';
 }
