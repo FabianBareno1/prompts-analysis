@@ -126,18 +126,30 @@ export function updateSummaryMarkdown(type) {
   summaryTableDrawn = true;
  */
 export function renderSection(data, type, chartType) {
-  // Show/hide summary table for code coverage
+  // Show/hide summary table and title for code coverage
   const summaryTable = document.getElementById('summary-table-container');
+  let coverageTitle = document.getElementById('code-coverage-title');
   if (type === 'code-coverage') {
     if (!codeCoverageTableDrawn) {
       codeCoverageTableDrawn = true;
       renderCodeCoverageSummaryTable();
     }
     if (summaryTable) summaryTable.style.display = 'block';
+    // Add title if not present
+    if (!coverageTitle) {
+      coverageTitle = document.createElement('h2');
+      coverageTitle.id = 'code-coverage-title';
+      coverageTitle.textContent = 'Code Coverage';
+      coverageTitle.style = 'margin-top:1.5rem;margin-bottom:1rem;color:#fff;font-size:2rem;text-align:left;';
+      summaryTable.parentNode.insertBefore(coverageTitle, summaryTable);
+    } else {
+      coverageTitle.style.display = 'block';
+    }
   } else {
     // Reset flag when leaving code coverage section
     codeCoverageTableDrawn = false;
     if (summaryTable) summaryTable.style.display = 'none';
+    if (coverageTitle) coverageTitle.style.display = 'none';
   }
   const legendDiv = document.getElementById('legend');
   if (legendDiv && legendDiv.parentNode) legendDiv.parentNode.removeChild(legendDiv);
@@ -187,8 +199,8 @@ export async function tryLoadServerCSV(type, chartType) {
     if (!data || data.filter(Boolean).length === 0) throw new Error('CSV empty or invalid');
     const filteredData = data.filter(Boolean);
     sectionData[type] = filteredData;
-  if (typeof updateChartTypeSelectorVisibility === 'function') updateChartTypeSelectorVisibility();
-  if (typeof showAdvancedOptionsForSection === 'function') showAdvancedOptionsForSection(type);
+    if (typeof updateChartTypeSelectorVisibility === 'function') updateChartTypeSelectorVisibility();
+    if (typeof showAdvancedOptionsForSection === 'function') showAdvancedOptionsForSection(type);
     const activeBtn = document.querySelector('nav button.active');
     if (activeBtn && activeBtn.id === type) {
       let chartTypeToUse = chartType;
@@ -215,9 +227,9 @@ export async function tryLoadServerCSV(type, chartType) {
     }
   } catch (err) {
     sectionData[type] = null;
-  showError('Could not load CSV file from server.');
-  if (typeof updateChartTypeSelectorVisibility === 'function') updateChartTypeSelectorVisibility();
-  if (typeof showAdvancedOptionsForSection === 'function') showAdvancedOptionsForSection(type);
+    showError('Could not load CSV file from server.');
+    if (typeof updateChartTypeSelectorVisibility === 'function') updateChartTypeSelectorVisibility();
+    if (typeof showAdvancedOptionsForSection === 'function') showAdvancedOptionsForSection(type);
   }
 }
 
