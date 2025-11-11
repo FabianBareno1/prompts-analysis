@@ -55,11 +55,16 @@ export function loadSecurityDatatable(csvPath) {
       scrollY: '400px',
       scrollCollapse: true,
       autoWidth: false,
-      destroy: true,      // safe re-init if called again
+      destroy: true,
       deferRender: true,
-      columnControl: {
-        target: 'tfoot',
-        content: ['search']
+      columnControl: ['order', ['search']],
+      columnDefs: [{
+          targets: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+          columnControl: ['order', ['searchList']]
+      }],
+      ordering: {
+        indicators: false,
+        handler: false
       }
     });
   }).catch(err => {
