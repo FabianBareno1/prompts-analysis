@@ -1,4 +1,7 @@
 import { renderCodeCoverageChart } from './features/codeCoverage.js';
+import { renderCodeCoverageSummaryTable } from './features/codeCoverageTable.js';
+// Flag to prevent duplicate rendering of the code coverage summary table
+let codeCoverageTableDrawn = false;
 import { renderTestSmellsChart } from './features/testSmells.js';
 import { renderSecurityPostureChart } from './features/securityPosture.js';
 import { renderSemanticBugDetectionChart } from './features/semanticBugDetection.js';
@@ -7,6 +10,7 @@ import { loadSecurityDatatable } from './uiSecurityFunctions.js';
 
 // Show/hide summary and detail
 document.addEventListener('DOMContentLoaded', () => {
+  // Render summary table on load if code coverage is active
   const summaryBtn = document.getElementById('show-summary-btn');
   const detailBtn = document.getElementById('show-detail-btn');
   const summaryContainer = document.getElementById('summary-md-container');
@@ -15,14 +19,17 @@ document.addEventListener('DOMContentLoaded', () => {
     summaryBtn.onclick = () => {
       summaryContainer.style.display = 'block';
       chartSvg.style.display = 'none';
+      document.getElementById('summary-table-container').style.display = 'block';
     };
     detailBtn.onclick = () => {
       summaryContainer.style.display = 'none';
       chartSvg.style.display = 'block';
+      document.getElementById('summary-table-container').style.display = 'block';
     };
     // By default, show the detail (chart)
     summaryContainer.style.display = 'none';
     chartSvg.style.display = 'block';
+    document.getElementById('summary-table-container').style.display = 'block';
   }
 });
 
@@ -34,7 +41,6 @@ export const dependenciesDatatable = document.getElementById('dependencies-datat
 export const summaryMd = document.getElementById('summary-md');
 export const errorMessage = document.getElementById('error-message');
 export const loader = document.getElementById('loader');
-export const csvSummary = document.getElementById('csv-summary');
 
 export const sectionData = {
   'code-coverage': null,
@@ -53,7 +59,6 @@ export function showError(msg) {
   errorMessage.hidden = false;
   chart.selectAll('*').remove();
   loader.style.display = 'none';
-  csvSummary.style.display = 'none';
   console.error(msg);
 }
 
@@ -63,7 +68,6 @@ export function showError(msg) {
 export function clearError() {
   errorMessage.hidden = true;
   loader.style.display = 'none';
-  csvSummary.style.display = 'none';
 }
 
 /**
@@ -119,8 +123,34 @@ export function updateSummaryMarkdown(type) {
  * @param {Array<Object>} data - Parsed CSV data for the section.
  * @param {string} type - Active section identifier (e.g., 'code-coverage', 'security-posture', etc).
  * @param {string} chartType - Chart type to display (optional, depends on section).
+  summaryTableDrawn = true;
  */
 export function renderSection(data, type, chartType) {
+  // Show/hide summary table and title for code coverage
+  const summaryTable = document.getElementById('summary-table-container');
+  let coverageTitle = document.getElementById('code-coverage-title');
+  if (type === 'code-coverage') {
+    if (!codeCoverageTableDrawn) {
+      codeCoverageTableDrawn = true;
+      renderCodeCoverageSummaryTable();
+    }
+    if (summaryTable) summaryTable.style.display = 'block';
+    // Add title if not present
+    if (!coverageTitle) {
+      coverageTitle = document.createElement('h2');
+      coverageTitle.id = 'code-coverage-title';
+      coverageTitle.textContent = 'Code Coverage';
+      coverageTitle.style = 'margin-top:1.5rem;margin-bottom:1rem;color:#fff;font-size:2rem;text-align:left;';
+      summaryTable.parentNode.insertBefore(coverageTitle, summaryTable);
+    } else {
+      coverageTitle.style.display = 'block';
+    }
+  } else {
+    // Reset flag when leaving code coverage section
+    codeCoverageTableDrawn = false;
+    if (summaryTable) summaryTable.style.display = 'none';
+    if (coverageTitle) coverageTitle.style.display = 'none';
+  }
   const legendDiv = document.getElementById('legend');
   if (legendDiv && legendDiv.parentNode) legendDiv.parentNode.removeChild(legendDiv);
   showSecurityDatatable(type);
@@ -169,8 +199,8 @@ export async function tryLoadServerCSV(type, chartType) {
     if (!data || data.filter(Boolean).length === 0) throw new Error('CSV empty or invalid');
     const filteredData = data.filter(Boolean);
     sectionData[type] = filteredData;
-  if (typeof updateChartTypeSelectorVisibility === 'function') updateChartTypeSelectorVisibility();
-  if (typeof showAdvancedOptionsForSection === 'function') showAdvancedOptionsForSection(type);
+    if (typeof updateChartTypeSelectorVisibility === 'function') updateChartTypeSelectorVisibility();
+    if (typeof showAdvancedOptionsForSection === 'function') showAdvancedOptionsForSection(type);
     const activeBtn = document.querySelector('nav button.active');
     if (activeBtn && activeBtn.id === type) {
       let chartTypeToUse = chartType;
@@ -197,9 +227,9 @@ export async function tryLoadServerCSV(type, chartType) {
     }
   } catch (err) {
     sectionData[type] = null;
-  showError('Could not load CSV file from server.');
-  if (typeof updateChartTypeSelectorVisibility === 'function') updateChartTypeSelectorVisibility();
-  if (typeof showAdvancedOptionsForSection === 'function') showAdvancedOptionsForSection(type);
+    showError('Could not load CSV file from server.');
+    if (typeof updateChartTypeSelectorVisibility === 'function') updateChartTypeSelectorVisibility();
+    if (typeof showAdvancedOptionsForSection === 'function') showAdvancedOptionsForSection(type);
   }
 }
 

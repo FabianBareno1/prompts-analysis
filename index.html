@@ -20,13 +20,16 @@
   <div class="header-nav-row">
     <header>
       <svg width="60" height="32" viewBox="0 0 60 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <text x="2" y="30" font-family="Brush Script MT, cursive" font-size="36" font-weight="bold" fill="#E11919">R</text>
-        <text x="32" y="30" font-family="Brush Script MT, cursive" font-size="36" font-weight="bold" fill="#E11919">X</text>
+        <text x="2" y="30" font-family="Brush Script MT, cursive" font-size="36" font-weight="bold"
+          fill="#E11919">R</text>
+        <text x="32" y="30" font-family="Brush Script MT, cursive" font-size="36" font-weight="bold"
+          fill="#E11919">X</text>
       </svg>
     </header>
     <div class="nav-center-wrapper">
       <nav aria-label="Analysis sections">
-        <button id="code-coverage" class="active" aria-label="View Code Coverage analysis" aria-pressed="true" role="tab">
+        <button id="code-coverage" class="active" aria-label="View Code Coverage analysis" aria-pressed="true"
+          role="tab">
           Code Coverage
         </button>
         <button id="test-smells" aria-label="View Test Smells analysis" aria-pressed="false" role="tab">
@@ -46,8 +49,9 @@
     </div>
   </div>
   <main>
+    <div id="summary-table-container" style="margin-bottom:2rem;display:none;"></div>
     <div id="summary-md-container">
-  <zero-md id="summary-md" style="display: block" src="" data-theme="dark">
+      <zero-md id="summary-md" style="display: block" src="" data-theme="dark">
         <template>
           <link rel="stylesheet" href="./github-markdown.css" />
           <link rel="stylesheet" href="./app-theme.css" />
@@ -61,6 +65,7 @@
               background: #0d1117 !important;
               color: #e6edf3 !important;
             }
+
             .markdown-body table,
             .markdown-body tr,
             .markdown-body th,
@@ -81,17 +86,24 @@
     </div>
     <div class="chart-area" id="chart-area">
       <div id="file-upload-area">
-        <div class="file-upload-group" id="code-coverage-upload" style="display: none; align-items: center; gap: 0.3rem;">
-          <select id="code-coverage-chart-type" aria-label="Chart type for code coverage" class="chart-type-dropdown"></select>
+        <div class="file-upload-group" id="code-coverage-upload"
+          style="display: none; align-items: center; gap: 0.3rem;">
+          <select id="code-coverage-chart-type" aria-label="Chart type for code coverage"
+            class="chart-type-dropdown"></select>
         </div>
-        <div class="file-upload-group" id="test-smells-upload" style="display: none; align-items: center; gap: 0.3rem;">          
-          <select id="test-smells-chart-type" aria-label="Chart type for test smells" class="chart-type-dropdown"></select>
+        <div class="file-upload-group" id="test-smells-upload" style="display: none; align-items: center; gap: 0.3rem;">
+          <select id="test-smells-chart-type" aria-label="Chart type for test smells"
+            class="chart-type-dropdown"></select>
         </div>
-        <div class="file-upload-group" id="security-posture-upload" style="display: none; align-items: center; gap: 0.3rem;">
-          <select id="security-posture-chart-type" aria-label="Chart type for Security Posture" class="chart-type-dropdown"></select>
+        <div class="file-upload-group" id="security-posture-upload"
+          style="display: none; align-items: center; gap: 0.3rem;">
+          <select id="security-posture-chart-type" aria-label="Chart type for Security Posture"
+            class="chart-type-dropdown"></select>
         </div>
-        <div class="file-upload-group" id="semantic-bug-detection-upload" style="display: none; align-items: center; gap: 0.3rem;">
-          <select id="semantic-bug-detection-chart-type" aria-label="Chart type for Semantic Bug Detection" class="chart-type-dropdown"></select>
+        <div class="file-upload-group" id="semantic-bug-detection-upload"
+          style="display: none; align-items: center; gap: 0.3rem;">
+          <select id="semantic-bug-detection-chart-type" aria-label="Chart type for Semantic Bug Detection"
+            class="chart-type-dropdown"></select>
         </div>
       </div>
       <svg id="chart" style="width: 100%; height: 100%; position: static; z-index: 1" role="img"

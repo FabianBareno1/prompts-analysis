@@ -199,7 +199,7 @@ main {
   box-sizing: border-box;
   background: none;
 }
-#summary-md-container, #datatable-container,
+#summary-md-container, #datatable-container, .datatable-container,
 .chart-area {
   width: 100%;
   max-width: 68.75em;
@@ -453,7 +453,8 @@ table.dataTable thead th,
 table.dataTable tbody td {
   white-space: nowrap;
 }
-#datatable-container {
+#datatable-container,
+.datatable-container {
   color: rgb(255, 255, 255);
   .dt-layout-row select {
     background-color: rgb(31, 41, 55);
