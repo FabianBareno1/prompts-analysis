@@ -13,25 +13,41 @@ export async function renderCodeCoverageSummaryTable() {
   const activeBtn = document.querySelector('nav button.active');
   if (!activeBtn || activeBtn.id !== 'code-coverage') return;
   // Load CSV
-  const csvPath = 'files/details/CodeCoverageSummaryTable.csv';
-  let rows;
+  const csvPath = 'files/details/CodeCoverage.csv';
+  let data;
   try {
-    rows = await d3.csv(csvPath, row => {
+    data = await d3.csv(csvPath, row => {
       if (!row || Object.values(row).every(v => v === '' || v == null)) return null;
       if (Object.values(row)[0] && Object.values(row)[0].startsWith('//')) return null;
       return row;
     });
-    rows = rows.filter(Boolean);
+    data = data.filter(Boolean);
   } catch (err) {
-    outer.textContent = 'Error loading CodeCoverageSummaryTable.csv';
+    outer.textContent = 'Error loading CodeCoverage.csv';
     outer.style.display = 'block';
     return;
   }
-  if (!rows.length) {
-    outer.textContent = 'No data found in CodeCoverageSummaryTable.csv';
+  if (!data.length) {
+    outer.textContent = 'No data found in CodeCoverage.csv';
     outer.style.display = 'block';
     return;
   }
+  // Group by module and calculate averages
+  const grouped = d3.group(data, d => d.Module);
+  const rows = Array.from(grouped, ([Module, items]) => {
+    const getAvg = col => {
+      const vals = items.map(r => parseFloat(r[col].replace(',', '.'))).filter(v => !isNaN(v));
+      return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
+    };
+    return {
+      Module,
+      'Lines%': getAvg('Lines%').toFixed(2),
+      'Branches%': getAvg('Branches%').toFixed(2),
+      'Functions%': getAvg('Functions%').toFixed(2),
+      'Statements%': getAvg('Statements%').toFixed(2),
+      Files: items.length
+    };
+  });
   // Dedicated mount point so the wrapper lives *inside* it
   let mount = document.getElementById('codecoverage-datatable');
   if (!mount) {
