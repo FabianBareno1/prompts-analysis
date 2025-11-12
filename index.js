@@ -2,7 +2,9 @@ import { renderCodeCoverageChart } from './features/codeCoverage.js';
 import { renderCodeCoverageSummaryTable } from './features/codeCoverageTable.js';
 // Flag to prevent duplicate rendering of the code coverage summary table
 let codeCoverageTableDrawn = false;
+let testSmellsTableDrawn = false;
 import { renderTestSmellsChart } from './features/testSmells.js';
+import { renderTestSmellsSummaryTable } from './features/testSmellsTable.js';
 import { renderSecurityPostureChart } from './features/securityPosture.js';
 import { renderSemanticBugDetectionChart } from './features/semanticBugDetection.js';
 import { renderRegressionRiskSection } from './features/regressionRisk.js';
@@ -126,9 +128,10 @@ export function updateSummaryMarkdown(type) {
   summaryTableDrawn = true;
  */
 export function renderSection(data, type, chartType) {
-  // Show/hide summary table and title for code coverage
+  // Show/hide summary table and title for code coverage and test smells
   const summaryTable = document.getElementById('summary-table-container');
   let coverageTitle = document.getElementById('code-coverage-title');
+  let testSmellsTitle = document.getElementById('test-smells-title');
   if (type === 'code-coverage') {
     if (!codeCoverageTableDrawn) {
       codeCoverageTableDrawn = true;
@@ -145,11 +148,35 @@ export function renderSection(data, type, chartType) {
     } else {
       coverageTitle.style.display = 'block';
     }
-  } else {
-    // Reset flag when leaving code coverage section
+    // Hide test smells title if present
+    if (testSmellsTitle) testSmellsTitle.style.display = 'none';
+    testSmellsTableDrawn = false;
+  } else if (type === 'test-smells') {
+    if (!testSmellsTableDrawn) {
+      testSmellsTableDrawn = true;
+      renderTestSmellsSummaryTable();
+    }
+    if (summaryTable) summaryTable.style.display = 'block';
+    // Add title if not present
+    if (!testSmellsTitle) {
+      testSmellsTitle = document.createElement('h2');
+      testSmellsTitle.id = 'test-smells-title';
+      testSmellsTitle.textContent = 'Test Smells';
+      testSmellsTitle.style = 'margin-top:1.5rem;margin-bottom:1rem;color:#fff;font-size:2rem;text-align:left;';
+      summaryTable.parentNode.insertBefore(testSmellsTitle, summaryTable);
+    } else {
+      testSmellsTitle.style.display = 'block';
+    }
+    // Hide code coverage title if present
+    if (coverageTitle) coverageTitle.style.display = 'none';
     codeCoverageTableDrawn = false;
+  } else {
+    // Reset flags when leaving both sections
+    codeCoverageTableDrawn = false;
+    testSmellsTableDrawn = false;
     if (summaryTable) summaryTable.style.display = 'none';
     if (coverageTitle) coverageTitle.style.display = 'none';
+    if (testSmellsTitle) testSmellsTitle.style.display = 'none';
   }
   const legendDiv = document.getElementById('legend');
   if (legendDiv && legendDiv.parentNode) legendDiv.parentNode.removeChild(legendDiv);
