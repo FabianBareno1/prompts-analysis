@@ -70,7 +70,7 @@ export function renderHeatmap() {
   if (!heatmapContainer) return;
   heatmapContainer.style.display = 'block';
   heatmapContainer.innerHTML = '';
-  generateModuleHeatmapData().then(renderModuleHeatmapBarScaleLog);
+  generateModuleHeatmapData().then(renderModuleHeatmapBarScaleLinear);
 }
 
 const SECTION_IDS = ['regression-risk', 'unit-testing', 'security-posture', 'semantic-bug-detection'];
