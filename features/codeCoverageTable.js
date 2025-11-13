@@ -12,23 +12,30 @@ export async function renderCodeCoverageSummaryTable() {
   // Only show for code coverage section
   const activeBtn = document.querySelector('nav button.active');
   if (!activeBtn || activeBtn.id !== 'code-coverage') return;
-  // Load CSV
-  const csvPath = 'files/details/CodeCoverageSummaryTable.csv';
+  // Load CSV (coverage_by_module.csv) and map/clean data
+  const csvPath = 'files/details/coverage_by_module.csv';
   let rows;
   try {
     rows = await d3.csv(csvPath, row => {
       if (!row || Object.values(row).every(v => v === '' || v == null)) return null;
       if (Object.values(row)[0] && Object.values(row)[0].startsWith('//')) return null;
-      return row;
+      // Map and clean columns
+      return {
+        'Module': row['module'],
+        'Lines%': (row['lines_percent'] || '').replace('%', ''),
+        'Branches%': (row['branches_percent'] || '').replace('%', ''),
+        'Functions%': (row['functions_percent'] || '').replace('%', ''),
+        'Statements%': (row['statements_percent'] || '').replace('%', '')
+      };
     });
     rows = rows.filter(Boolean);
   } catch (err) {
-    outer.textContent = 'Error loading CodeCoverageSummaryTable.csv';
+    outer.textContent = 'Error loading coverage_by_module.csv';
     outer.style.display = 'block';
     return;
   }
   if (!rows.length) {
-    outer.textContent = 'No data found in CodeCoverageSummaryTable.csv';
+    outer.textContent = 'No data found in coverage_by_module.csv';
     outer.style.display = 'block';
     return;
   }
@@ -47,7 +54,7 @@ export async function renderCodeCoverageSummaryTable() {
   tbl.className = 'display';
   tbl.style.width = '100%';
   mount.appendChild(tbl);
-  // Initialize DataTables con opciones igual a seguridad
+  // Initialize DataTables with mapped/cleaned columns
   $(tbl).DataTable({
     data: rows,
     columns: [
@@ -55,8 +62,7 @@ export async function renderCodeCoverageSummaryTable() {
       { title: 'Lines%', data: 'Lines%' },
       { title: 'Branches%', data: 'Branches%' },
       { title: 'Functions%', data: 'Functions%' },
-      { title: 'Statements%', data: 'Statements%' },
-      { title: 'Files', data: 'Files' }
+      { title: 'Statements%', data: 'Statements%' }
     ],
     pageLength: 10,
     lengthMenu: [10, 25, 50, 100, 200],
@@ -70,7 +76,7 @@ export async function renderCodeCoverageSummaryTable() {
     columnControl: ['order', ['search']],
     columnDefs: [
       {
-        targets: [0, 1, 2, 3, 4, 5],
+        targets: [0, 1, 2, 3, 4],
         columnControl: ['order', ['searchList']],
         columnControlPlacement: 'right'
       }
